@@ -7,6 +7,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from tracefork.models.provenance import Provenance
+from tracefork.models.replay import BoundaryInvocation
 from tracefork.models.span import Span
 
 SCHEMA_VERSION = "1.0"
@@ -37,6 +38,7 @@ class Trace(BaseModel):
     input: Any = None
     output: Any | None = None
     spans: list[Span] = Field(default_factory=list)
+    invocations: list[BoundaryInvocation] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
     provenance: Provenance
     status: TraceStatus = TraceStatus.RUNNING

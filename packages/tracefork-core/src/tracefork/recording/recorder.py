@@ -11,6 +11,7 @@ from types import TracebackType
 from typing import Any, Literal
 
 from tracefork.models import (
+    ExecutionMode,
     Provenance,
     Span,
     SpanError,
@@ -20,7 +21,12 @@ from tracefork.models import (
     TraceStatus,
     capture_git_provenance,
 )
-from tracefork.recording.context import current_recording, current_span
+from tracefork.recording.context import (
+    ExecutionContext,
+    current_execution,
+    current_recording,
+    current_span,
+)
 
 
 class Recording:
@@ -43,6 +49,7 @@ class Recording:
             provenance=capture_git_provenance() if capture_provenance else Provenance(),
         )
         self._finished = False
+        self._occurrence_counts: dict[tuple[str, str, str | None], int] = {}
 
     def start_span(self, name: str, kind: SpanKind, input: Any = None) -> Span:
         """Start a span parented to the currently open span (if any)."""
@@ -69,6 +76,17 @@ class Recording:
         # Exception type and message only: stack traces carry local paths.
         span.error = SpanError(exception_type=type(error).__qualname__, message=str(error))
 
+    def next_occurrence(self, boundary_type: str, name: str, parent_span_id: str | None) -> int:
+        """Assign the occurrence index for a boundary call (TF-043).
+
+        Scoped by boundary type, name and logical parent so repeated identical
+        calls stay distinguishable. Fingerprints join the scope in M4.
+        """
+        key = (boundary_type, name, parent_span_id)
+        count = self._occurrence_counts.get(key, 0)
+        self._occurrence_counts[key] = count + 1
+        return count
+
     def finish(self, error: BaseException | None = None) -> None:
         """Close the recording session."""
         if self._finished:
@@ -79,14 +97,22 @@ class Recording:
 
 
 class _RecordingContext:
-    """Dual sync/async context manager driving a :class:`Recording`."""
+    """Dual sync/async context manager driving a :class:`Recording`.
+
+    Installing a recording also installs a RECORD execution context, so
+    boundary calls made inside the block are captured automatically.
+    """
 
     def __init__(self, recording: Recording) -> None:
         self.recording = recording
-        self._token: Any = None
+        self._recording_token: Any = None
+        self._execution_token: Any = None
 
     def __enter__(self) -> Recording:
-        self._token = current_recording.set(self.recording)
+        self._recording_token = current_recording.set(self.recording)
+        self._execution_token = current_execution.set(
+            ExecutionContext(mode=ExecutionMode.RECORD, recording=self.recording)
+        )
         return self.recording
 
     def __exit__(
@@ -95,9 +121,12 @@ class _RecordingContext:
         exc_value: BaseException | None,
         traceback: TracebackType | None,
     ) -> Literal[False]:
-        if self._token is not None:
-            current_recording.reset(self._token)
-            self._token = None
+        if self._execution_token is not None:
+            current_execution.reset(self._execution_token)
+            self._execution_token = None
+        if self._recording_token is not None:
+            current_recording.reset(self._recording_token)
+            self._recording_token = None
         self.recording.finish(exc_value)
         return False
 
