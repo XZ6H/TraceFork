@@ -19,7 +19,7 @@ from tracefork.boundaries import (
     execution_context,
 )
 from tracefork.boundaries.errors import UnknownBoundaryError
-from tracefork.errors import ReplayError
+from tracefork.errors import AdapterError, ReplayError
 from tracefork.models import SpanKind, SpanStatus
 
 
@@ -84,10 +84,44 @@ async def test_record_mode_records_invocation_and_boundary_span(
     assert invocation.response == {"orders": []}
     assert invocation.span_id == boundary_span.span_id
     assert invocation.parent_span_id == agent_span.span_id
-    # Fingerprints arrive with the canonicalization milestone (M4).
-    assert invocation.fingerprint is None
+    assert invocation.parent_name == "agent"
+    # Fingerprints are stable 64-char hex strings (canonicalization, TF-042).
+    assert invocation.fingerprint is not None
+    assert len(invocation.fingerprint) == 64
     assert invocation.occurrence == 0
     assert invocation.metadata["echo"] is True
+
+
+async def test_identical_calls_share_fingerprint_and_get_occurrences(
+    echo_registry: BoundaryRegistry,
+) -> None:
+    runtime = BoundaryRuntime(registry=echo_registry)
+    with record("case") as rec:
+        await runtime.invoke("tool.echo", "search", {"q": 1}, _counting_live([]))
+        await runtime.invoke("tool.echo", "search", {"q": 1}, _counting_live([]))
+    first, second = rec.trace.invocations
+    assert first.fingerprint == second.fingerprint
+    assert (first.occurrence, second.occurrence) == (0, 1)
+
+
+async def test_non_canonicalizable_request_fails_before_any_recording(
+    echo_registry: BoundaryRegistry,
+) -> None:
+    runtime = BoundaryRuntime(registry=echo_registry)
+
+    class Mystery:
+        pass
+
+    calls: list[int] = []
+
+    async def live() -> None:
+        calls.append(1)
+
+    with record("case") as rec, pytest.raises(AdapterError):
+        await runtime.invoke("tool.echo", "search", {"k": Mystery()}, live)
+    assert calls == []  # never executed
+    assert rec.trace.invocations == []
+    assert rec.trace.spans == []
 
 
 async def test_record_mode_without_enclosing_span_links_to_root(
@@ -106,7 +140,7 @@ async def test_repeated_calls_get_occurrence_index(echo_registry: BoundaryRegist
     runtime = BoundaryRuntime(registry=echo_registry)
     with record("case") as rec:
         await runtime.invoke("tool.echo", "search", {"q": 1}, _counting_live([]))
-        await runtime.invoke("tool.echo", "search", {"q": 2}, _counting_live([]))
+        await runtime.invoke("tool.echo", "search", {"q": 1}, _counting_live([]))
         await runtime.invoke("tool.echo", "other", {"q": 3}, _counting_live([]))
     assert [invocation.occurrence for invocation in rec.trace.invocations] == [0, 1, 0]
 

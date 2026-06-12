@@ -49,7 +49,7 @@ class Recording:
             provenance=capture_git_provenance() if capture_provenance else Provenance(),
         )
         self._finished = False
-        self._occurrence_counts: dict[tuple[str, str, str | None], int] = {}
+        self._occurrence_counts: dict[tuple[str, str, str | None, str | None], int] = {}
 
     def start_span(self, name: str, kind: SpanKind, input: Any = None) -> Span:
         """Start a span parented to the currently open span (if any)."""
@@ -76,13 +76,19 @@ class Recording:
         # Exception type and message only: stack traces carry local paths.
         span.error = SpanError(exception_type=type(error).__qualname__, message=str(error))
 
-    def next_occurrence(self, boundary_type: str, name: str, parent_span_id: str | None) -> int:
+    def next_occurrence(
+        self,
+        boundary_type: str,
+        name: str,
+        fingerprint: str | None,
+        parent_span_id: str | None,
+    ) -> int:
         """Assign the occurrence index for a boundary call (TF-043).
 
-        Scoped by boundary type, name and logical parent so repeated identical
-        calls stay distinguishable. Fingerprints join the scope in M4.
+        Scoped by boundary type, name, fingerprint and logical parent so
+        repeated identical calls stay distinguishable.
         """
-        key = (boundary_type, name, parent_span_id)
+        key = (boundary_type, name, fingerprint, parent_span_id)
         count = self._occurrence_counts.get(key, 0)
         self._occurrence_counts[key] = count + 1
         return count

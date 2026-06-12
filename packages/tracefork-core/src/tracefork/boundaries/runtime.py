@@ -11,7 +11,8 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from tracefork.boundaries.base import LiveCall, boundary_span_kind
 from tracefork.boundaries.registry import BoundaryRegistry
-from tracefork.errors import RecordingError, ReplayError
+from tracefork.canonicalization import Canonicalizer
+from tracefork.errors import AdapterError, RecordingError, ReplayError
 from tracefork.models import (
     BoundaryInvocation,
     BoundaryRequest,
@@ -65,8 +66,11 @@ def execution_context(context: ExecutionContext) -> _ExecutionContextManager:
 class BoundaryRuntime:
     """Routes boundary invocations according to the active execution context."""
 
-    def __init__(self, registry: BoundaryRegistry) -> None:
+    def __init__(
+        self, registry: BoundaryRegistry, canonicalizer: Canonicalizer | None = None
+    ) -> None:
         self._registry = registry
+        self._canonicalizer = canonicalizer if canonicalizer is not None else Canonicalizer()
 
     async def invoke(
         self,
@@ -106,13 +110,28 @@ class BoundaryRuntime:
         call_live: LiveCall,
         metadata: dict[str, Any],
     ) -> Any:
+        # Canonicalize and fingerprint before anything is recorded: a request
+        # that cannot be canonicalized must fail without side effects.
+        try:
+            canonical_request = self._canonicalizer.canonical_request(request)
+            fingerprint = self._canonicalizer.fingerprint(boundary_type, name, request)
+        except TypeError as exc:
+            msg = f"boundary {boundary_type}.{name} request is not canonicalizable: {exc}"
+            raise AdapterError(msg) from exc
+
         handler = self._registry.handler_for(boundary_type)
         boundary_request = BoundaryRequest(
-            boundary_type=boundary_type, name=name, request=request, metadata=dict(metadata)
+            boundary_type=boundary_type,
+            name=name,
+            request=canonical_request,
+            metadata=dict(metadata),
         )
         parent = current_span.get()
         parent_span_id = parent.span_id if parent is not None else None
-        span = recording.start_span(name, boundary_span_kind(boundary_type), input=request)
+        parent_name = parent.name if parent is not None else None
+        span = recording.start_span(
+            name, boundary_span_kind(boundary_type), input=canonical_request
+        )
         token = current_span.set(span)
         try:
             try:
@@ -123,11 +142,15 @@ class BoundaryRuntime:
                     BoundaryInvocation(
                         boundary_type=boundary_type,
                         name=name,
-                        request=request,
+                        request=canonical_request,
                         response=None,
+                        fingerprint=fingerprint,
                         span_id=span.span_id,
                         parent_span_id=parent_span_id,
-                        occurrence=recording.next_occurrence(boundary_type, name, parent_span_id),
+                        parent_name=parent_name,
+                        occurrence=recording.next_occurrence(
+                            boundary_type, name, fingerprint, parent_span_id
+                        ),
                         metadata={
                             **metadata,
                             "error": {
@@ -144,11 +167,15 @@ class BoundaryRuntime:
                 BoundaryInvocation(
                     boundary_type=boundary_type,
                     name=name,
-                    request=request,
+                    request=canonical_request,
                     response=response.response,
+                    fingerprint=fingerprint,
                     span_id=span.span_id,
                     parent_span_id=parent_span_id,
-                    occurrence=recording.next_occurrence(boundary_type, name, parent_span_id),
+                    parent_name=parent_name,
+                    occurrence=recording.next_occurrence(
+                        boundary_type, name, fingerprint, parent_span_id
+                    ),
                     metadata={**metadata, **response.metadata},
                 )
             )

@@ -71,8 +71,10 @@ class BoundaryResponse(BaseModel):
 class BoundaryInvocation(BaseModel):
     """One recorded boundary interaction; the unit of replay matching (TF-033).
 
-    ``fingerprint`` is assigned by the canonicalization pipeline (M4) and is
-    ``None`` until then. ``occurrence`` disambiguates repeated identical calls.
+    ``fingerprint`` covers the boundary type, name and canonical request.
+    ``occurrence`` disambiguates repeated identical calls. ``parent_name``
+    gives matching a stable logical parent anchor (span IDs are not stable
+    across executions).
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -84,5 +86,6 @@ class BoundaryInvocation(BaseModel):
     fingerprint: str | None = None
     span_id: str = Field(min_length=1)
     parent_span_id: str | None = None
+    parent_name: str | None = None
     occurrence: int = 0
     metadata: dict[str, Any] = Field(default_factory=dict)
