@@ -6,17 +6,19 @@ native and canonical data; the runtime records, matches and fails closed.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Literal
 
 from tracefork.boundaries.base import LiveCall, boundary_span_kind
 from tracefork.boundaries.registry import BoundaryRegistry
 from tracefork.canonicalization import Canonicalizer
-from tracefork.errors import AdapterError, RecordingError, ReplayError
+from tracefork.errors import AdapterError, RecordingError, ReplayError, ReplayPolicyError
 from tracefork.models import (
     BoundaryInvocation,
     BoundaryRequest,
     ExecutionMode,
+    ReplayMode,
 )
 from tracefork.recording.context import ExecutionContext, current_execution, current_span
 
@@ -84,16 +86,41 @@ class BoundaryRuntime:
         """Invoke one boundary under the current execution mode.
 
         NORMAL passes through untouched. RECORD executes live exactly once and
-        records the invocation. REPLAY without a session fails closed: the
-        live call is never made (ADR 0003).
+        records the invocation. REPLAY resolves the replay policy per boundary:
+        REPLAY boundaries are served from the recording (no live call exists
+        on that path), LIVE boundaries execute for real, and unsupported modes
+        fail closed (ADR 0003).
         """
         context = current_execution.get()
         mode = ExecutionMode.NORMAL if context is None else context.mode
         if mode is ExecutionMode.NORMAL:
             return await call_live()
         if mode is ExecutionMode.REPLAY:
-            msg = "no replay session attached: refusing to call live (fail closed)"
-            raise ReplayError(msg)
+            if context is None or context.replay_session is None:
+                msg = "no replay session attached: refusing to call live (fail closed)"
+                raise ReplayError(msg)
+            session = context.replay_session
+            policy = context.policy if context.policy is not None else session.policy
+            boundary_mode = policy.mode_for(boundary_type, name)
+            if boundary_mode is ReplayMode.REPLAY:
+                return await session.replay_invoke(
+                    boundary_type, name, request, dict(metadata or {})
+                )
+            if boundary_mode is ReplayMode.LIVE:
+                if context.recording is None:
+                    msg = "live boundaries in replay require a candidate recording"
+                    raise RecordingError(msg)
+                return await self._invoke_recording(
+                    context.recording,
+                    boundary_type,
+                    name,
+                    request,
+                    call_live,
+                    dict(metadata or {}),
+                    on_live=lambda: session.note_live(boundary_type, name),
+                )
+            msg = f"replay mode {boundary_mode.value!r} is not supported yet"
+            raise ReplayPolicyError(msg)
         if context is None or context.recording is None:
             msg = "record mode requires an active recording"
             raise RecordingError(msg)
@@ -109,6 +136,7 @@ class BoundaryRuntime:
         request: Any,
         call_live: LiveCall,
         metadata: dict[str, Any],
+        on_live: Callable[[], None] | None = None,
     ) -> Any:
         # Canonicalize and fingerprint before anything is recorded: a request
         # that cannot be canonicalized must fail without side effects.
@@ -135,6 +163,8 @@ class BoundaryRuntime:
         token = current_span.set(span)
         try:
             try:
+                if on_live is not None:
+                    on_live()
                 response = await handler.execute(boundary_request, call_live)
             except BaseException as exc:
                 recording.finish_span(span, exc)

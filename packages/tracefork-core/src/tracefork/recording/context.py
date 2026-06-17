@@ -14,6 +14,7 @@ from tracefork.models import ExecutionMode, ReplayPolicy
 if TYPE_CHECKING:
     from tracefork.models import Span
     from tracefork.recording.recorder import Recording
+    from tracefork.replay.session import ReplaySession
 
 current_recording: ContextVar["Recording | None"] = ContextVar(
     "tracefork_current_recording", default=None
@@ -29,9 +30,11 @@ class ExecutionContext:
     """Execution mode and its attached state (TF-032).
 
     One context is active per task at a time; ``record()`` installs a RECORD
-    context, replay executions install a REPLAY context with a policy.
+    context, replay executions install a REPLAY context with a session and
+    policy.
     """
 
     mode: ExecutionMode
     recording: "Recording | None" = None
     policy: ReplayPolicy | None = None
+    replay_session: "ReplaySession | None" = None
