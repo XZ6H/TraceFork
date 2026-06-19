@@ -43,13 +43,13 @@ fails with diagnostics. It never silently calls the real dependency.
 Work in progress, built milestone by milestone (TDD, small conceptual commits).
 
 - [x] M0 — repository foundation (uv workspace, quality gates, CI, ADRs)
-- [ ] M1 — trace model and persistence
-- [ ] M2 — recording engine
-- [ ] M3 — boundary abstraction
-- [ ] M4 — canonicalization and matching
-- [ ] M5 — hermetic replay
-- [ ] M6 — Python tool adapter (first vertical slice)
-- [ ] M7+ — OpenAI adapter, httpx adapter, selective replay, CLI, diff, eval suites
+- [x] M1 — trace model and persistence
+- [x] M2 — recording engine (contextvars, nested/parallel spans, exceptions)
+- [x] M3 — boundary abstraction (runtime, registry, invocation recording)
+- [x] M4 — canonicalization and matching (fingerprints, occurrence, diagnostics)
+- [x] M5 — hermetic replay (sessions, fail-closed matching, invariants)
+- [x] M6 — Python tool adapter (first vertical slice)
+- [ ] M7+ — OpenAI adapter, httpx adapter, selective replay CLI, diff, eval suites
 
 ## Development
 
