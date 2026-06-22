@@ -40,11 +40,12 @@ with the tool's fully-qualified name and canonicalized arguments.
 ```python
 registry = BoundaryRegistry()
 runtime = BoundaryRuntime(registry=registry)
-tools = ToolBox(runtime)          # registers the shared tool handler
+tools = ToolBox(runtime)  # registers the shared tool handler
+
 
 @tools.tool(name="search_orders")
-async def search_orders(customer_id: int) -> dict:
-    ...
+async def search_orders(customer_id: int) -> dict: ...
+
 
 # inside record()/ReplaySession contexts the call is intercepted:
 result = await search_orders(customer_id=912)
