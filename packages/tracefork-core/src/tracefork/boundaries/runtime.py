@@ -74,6 +74,11 @@ class BoundaryRuntime:
         self._registry = registry
         self._canonicalizer = canonicalizer if canonicalizer is not None else Canonicalizer()
 
+    @property
+    def registry(self) -> BoundaryRegistry:
+        """The registry this runtime resolves handlers against."""
+        return self._registry
+
     async def invoke(
         self,
         boundary_type: str,
