@@ -10,6 +10,7 @@ resolution-markers = [
 members = [
     "tracefork",
     "tracefork-core",
+    "tracefork-httpx",
     "tracefork-openai",
 ]
 
@@ -737,13 +738,13 @@ source = { virtual = "." }
 
 [package.dev-dependencies]
 dev = [
-    { name = "httpx" },
     { name = "hypothesis" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "ruff" },
     { name = "tracefork-core" },
+    { name = "tracefork-httpx" },
     { name = "tracefork-openai" },
 ]
 
@@ -751,13 +752,13 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "httpx", specifier = ">=0.28.1" },
     { name = "hypothesis", specifier = ">=6.108" },
     { name = "mypy", specifier = ">=1.11" },
     { name = "pytest", specifier = ">=8.3" },
     { name = "pytest-asyncio", specifier = ">=0.24" },
     { name = "ruff", specifier = ">=0.6" },
     { name = "tracefork-core", editable = "packages/tracefork-core" },
+    { name = "tracefork-httpx", editable = "packages/tracefork-httpx" },
     { name = "tracefork-openai", editable = "packages/tracefork-openai" },
 ]
 
@@ -771,6 +772,21 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "pydantic", specifier = ">=2.7" }]
+
+[[package]]
+name = "tracefork-httpx"
+version = "0.1.0"
+source = { editable = "packages/tracefork-httpx" }
+dependencies = [
+    { name = "httpx" },
+    { name = "tracefork-core" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "tracefork-core", editable = "packages/tracefork-core" },
+]
 
 [[package]]
 name = "tracefork-openai"
