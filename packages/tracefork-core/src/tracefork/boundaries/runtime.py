@@ -214,6 +214,8 @@ class BoundaryRuntime:
                     metadata={**metadata, **response.metadata},
                 )
             )
-            return response.response
+            # Callers always receive the native shape, in RECORD and REPLAY
+            # alike; only the stored payload stays canonical (TF-073).
+            return handler.restore(response.response, response.metadata)
         finally:
             current_span.reset(token)

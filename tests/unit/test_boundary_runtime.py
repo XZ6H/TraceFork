@@ -192,3 +192,30 @@ async def test_unknown_boundary_type_fails_before_recording() -> None:
         await runtime.invoke("tool.nope", "search", {}, _counting_live([]))
     assert rec.trace.invocations == []
     assert rec.trace.spans == []
+
+
+class WrappingHandler:
+    """Handler whose native form differs from its canonical payload (TF-073)."""
+
+    async def execute(self, request, call_live):
+        from tracefork.models import BoundaryResponse
+
+        return BoundaryResponse(response=await call_live(), metadata={})
+
+    def restore(self, response, metadata):
+        return {"native": response}
+
+
+async def test_record_mode_returns_restored_native_response() -> None:
+    from tracefork.boundaries import BoundaryRegistry, BoundaryRuntime
+
+    registry = BoundaryRegistry()
+    registry.register("llm.test", WrappingHandler())
+    runtime = BoundaryRuntime(registry=registry)
+
+    with record("case") as rec:
+        native = await runtime.invoke("llm.test", "planner", {"a": 1}, _counting_live([]))
+
+    assert native == {"native": "live-result"}  # caller gets the native shape
+    assert rec.trace.invocations[0].response == "live-result"  # canonical stored
+    assert rec.trace.spans[0].output == "live-result"
