@@ -14,11 +14,13 @@ dependencies = []
 [dependency-groups]
 dev = [
     "tracefork-core",
+    "tracefork-openai",
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
     "hypothesis>=6.108",
     "ruff>=0.6",
     "mypy>=1.11",
+    "httpx>=0.28.1",
 ]
 
 [tool.uv.workspace]
@@ -26,6 +28,7 @@ members = ["packages/*"]
 
 [tool.uv.sources]
 tracefork-core = { workspace = true }
+tracefork-openai = { workspace = true }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
