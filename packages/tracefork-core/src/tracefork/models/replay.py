@@ -35,13 +35,21 @@ class ReplayPolicy(BaseModel):
     default: ReplayMode = ReplayMode.REPLAY
     llm: ReplayMode | None = None
     http: ReplayMode | None = None
+    families: dict[str, ReplayMode] = Field(default_factory=dict)
     tools: dict[str, ReplayMode] = Field(default_factory=dict)
 
     def mode_for(self, boundary_type: str, name: str) -> ReplayMode:
-        """Resolve the replay mode for a boundary call."""
+        """Resolve the replay mode for a boundary call.
+
+        Order: exact boundary rule (tool name), then boundary-family rule,
+        then default.
+        """
         family = boundary_type.split(".", 1)[0]
         if family == "tool" and name in self.tools:
             return self.tools[name]
+        family_rule = self.families.get(family)
+        if family_rule is not None:
+            return family_rule
         type_rule = {"llm": self.llm, "http": self.http}.get(family)
         if type_rule is not None:
             return type_rule

@@ -30,3 +30,12 @@ def test_exact_tool_rule_overrides_everything() -> None:
     policy = ReplayPolicy(tools={"search_orders": ReplayMode.LIVE})
     assert policy.mode_for("tool.echo", "search_orders") is ReplayMode.LIVE
     assert policy.mode_for("tool.echo", "refund_order") is ReplayMode.REPLAY
+
+
+def test_family_rule_overrides_default_but_not_exact() -> None:
+    policy = ReplayPolicy(families={"tool": ReplayMode.LIVE})
+    assert policy.mode_for("tool.python", "search") is ReplayMode.LIVE
+    assert policy.mode_for("llm.openai", "planner") is ReplayMode.REPLAY
+    exact = ReplayPolicy(families={"tool": ReplayMode.LIVE}, tools={"search": ReplayMode.REPLAY})
+    assert exact.mode_for("tool.python", "search") is ReplayMode.REPLAY
+    assert exact.mode_for("tool.python", "other") is ReplayMode.LIVE
