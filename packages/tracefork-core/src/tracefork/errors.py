@@ -49,5 +49,9 @@ class AdapterError(TraceForkError):
     """Raised when an adapter cannot translate a native call."""
 
 
+class GraphError(TraceForkError):
+    """Raised when a trace's span structure is invalid (cycles, orphans, duplicates)."""
+
+
 class EvaluationError(TraceForkError):
     """Raised when an evaluation cannot be performed."""
