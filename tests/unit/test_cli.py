@@ -187,3 +187,34 @@ def test_replay_bad_entrypoint_exits_3(workspace: Path) -> None:
     fixture_path = _record_weather_fixture(workspace)
     result = runner.invoke(app, ["replay", str(fixture_path), "--entrypoint", "not-a-module:run"])
     assert result.exit_code == 3
+
+
+def test_diff_reports_trajectory_and_resources(workspace: Path) -> None:
+    registry = BoundaryRegistry()
+    runtime = BoundaryRuntime(registry=registry)
+    tools = ToolBox(runtime)
+
+    @tools.tool(name="weather")
+    async def weather(city: str) -> dict[str, Any]:
+        return {"temperature": 21}
+
+    import asyncio
+
+    store = FilesystemFixtureStore(workspace)
+    with record("baseline", input={"city": "Berlin"}) as rec:
+        asyncio.run(weather("Berlin"))
+    store.save("baseline", build_envelope(rec.trace))
+
+    with record("candidate", input={"city": "Berlin"}) as rec2:
+        asyncio.run(weather("Berlin"))
+        asyncio.run(weather("Berlin"))
+    store.save("candidate", build_envelope(rec2.trace))
+
+    result = runner.invoke(
+        app,
+        ["diff", str(workspace / "baseline.json"), str(workspace / "candidate.json")],
+    )
+    assert result.exit_code == 0, result.output
+    assert "+ tool:weather" in result.output
+    assert "First divergence" in result.output
+    assert "tool_calls: 1 -> 2" in result.output
