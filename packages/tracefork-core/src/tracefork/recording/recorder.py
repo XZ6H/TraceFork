@@ -27,6 +27,17 @@ from tracefork.recording.context import (
     current_recording,
     current_span,
 )
+from tracefork.redaction import RedactionEngine
+
+
+def _build_redaction_engine(
+    redact: RedactionEngine | list[str] | None,
+) -> RedactionEngine:
+    if redact is None:
+        return RedactionEngine()
+    if isinstance(redact, RedactionEngine):
+        return redact
+    return RedactionEngine(keys=RedactionEngine().keys | set(redact))
 
 
 class Recording:
@@ -39,6 +50,7 @@ class Recording:
         input: Any = None,
         metadata: dict[str, Any] | None = None,
         capture_provenance: bool = True,
+        redact: RedactionEngine | list[str] | None = None,
     ) -> None:
         self.trace = Trace(
             trace_id=f"tr_{uuid.uuid4().hex}",
@@ -48,6 +60,7 @@ class Recording:
             metadata=dict(metadata) if metadata else {},
             provenance=capture_git_provenance() if capture_provenance else Provenance(),
         )
+        self.redaction = _build_redaction_engine(redact)
         self._finished = False
         self._occurrence_counts: dict[tuple[str, str, str | None, str | None], int] = {}
 
@@ -59,7 +72,7 @@ class Recording:
             parent_span_id=parent.span_id if parent is not None else None,
             kind=kind,
             name=name,
-            input=input,
+            input=self.redaction.apply(input),
             started_at=datetime.now(UTC),
         )
         # Append order is start order, never completion order (ADR 0005).
@@ -69,12 +82,29 @@ class Recording:
     def finish_span(self, span: Span, error: BaseException | None) -> None:
         """Close a span, recording the exception when one escaped it (TF-024)."""
         span.completed_at = datetime.now(UTC)
+        span.output = self.redaction.apply(span.output)
         if error is None:
             span.status = SpanStatus.OK
             return
         span.status = SpanStatus.ERROR
         # Exception type and message only: stack traces carry local paths.
         span.error = SpanError(exception_type=type(error).__qualname__, message=str(error))
+
+    def record_invocation(self, invocation: Any) -> None:
+        """Redact and persist one boundary invocation (TF-172).
+
+        Redaction happens here — at write time — so sensitive values never
+        reach the trace, the fixture or disk.
+        """
+        self.trace.invocations.append(
+            invocation.model_copy(
+                update={
+                    "request": self.redaction.apply(invocation.request),
+                    "response": self.redaction.apply(invocation.response),
+                    "metadata": self.redaction.apply(invocation.metadata),
+                }
+            )
+        )
 
     def next_occurrence(
         self,
@@ -154,6 +184,7 @@ def record(
     input: Any = None,
     metadata: dict[str, Any] | None = None,
     capture_provenance: bool = True,
+    redact: RedactionEngine | list[str] | None = None,
 ) -> _RecordingContext:
     """Record one agent execution as a trace.
 
@@ -166,5 +197,11 @@ def record(
             ...
     """
     return _RecordingContext(
-        Recording(name, input=input, metadata=metadata, capture_provenance=capture_provenance)
+        Recording(
+            name,
+            input=input,
+            metadata=metadata,
+            capture_provenance=capture_provenance,
+            redact=redact,
+        )
     )

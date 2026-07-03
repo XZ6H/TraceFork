@@ -186,7 +186,7 @@ class ReplaySession:
         span.output = recorded.response
         span.attributes["replay"] = "replayed"
         recording.finish_span(span, None)
-        recording.trace.invocations.append(
+        recording.record_invocation(
             recorded.model_copy(
                 update={
                     "span_id": span.span_id,

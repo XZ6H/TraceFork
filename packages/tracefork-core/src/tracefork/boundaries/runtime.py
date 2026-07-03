@@ -173,7 +173,7 @@ class BoundaryRuntime:
                 response = await handler.execute(boundary_request, call_live)
             except BaseException as exc:
                 recording.finish_span(span, exc)
-                recording.trace.invocations.append(
+                recording.record_invocation(
                     BoundaryInvocation(
                         boundary_type=boundary_type,
                         name=name,
@@ -198,7 +198,7 @@ class BoundaryRuntime:
                 raise
             span.output = response.response
             recording.finish_span(span, None)
-            recording.trace.invocations.append(
+            recording.record_invocation(
                 BoundaryInvocation(
                     boundary_type=boundary_type,
                     name=name,
