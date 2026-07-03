@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"
 license-files = ["../../LICENSE"]
-dependencies = ["rich>=13.7", "tracefork-core", "typer>=0.12"]
+dependencies = ["pyyaml>=6.0", "rich>=13.7", "tracefork-core", "typer>=0.12"]
 
 [project.scripts]
 tracefork = "tracefork_cli.main:main"

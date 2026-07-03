@@ -9,7 +9,7 @@ from typing import Any
 import tracefork
 import typer
 
-from tracefork_cli.commands import diff, init, inspect, record, replay
+from tracefork_cli.commands import diff, eval, init, inspect, record, replay
 from tracefork_cli.output.console import error_console
 
 app = typer.Typer(
@@ -24,6 +24,7 @@ app.command("record", context_settings={"allow_extra_args": True, "ignore_unknow
 app.command("inspect")(inspect.inspect)
 app.command("replay")(replay.replay)
 app.command("diff")(diff.diff)
+app.command("eval")(eval.eval_suite)
 
 
 def _version_callback(value: bool) -> None:
