@@ -100,16 +100,21 @@ class WrappedTool:
     """
 
     def __init__(
-        self, func: Callable[..., Any], runtime: BoundaryRuntime, name: str | None = None
+        self,
+        func: Callable[..., Any],
+        runtime: BoundaryRuntime,
+        name: str | None = None,
+        boundary_type: str = TOOL_BOUNDARY_TYPE,
     ) -> None:
         self._func = func
         self._runtime = runtime
         self.tool_name = name if name is not None else f"{func.__module__}.{func.__qualname__}"
+        self._boundary_type = boundary_type
         functools.update_wrapper(self, func, updated=())
 
     @property
     def boundary_type(self) -> str:
-        return TOOL_BOUNDARY_TYPE
+        return self._boundary_type
 
     @property
     def func(self) -> Callable[..., Any]:
@@ -141,23 +146,39 @@ class ToolBox:
         self._runtime = runtime
         self._handler_registered = False
 
-    def tool(self, *, name: str | None = None) -> Callable[[Callable[..., Any]], WrappedTool]:
-        """Decorate an async or sync function as a TraceFork tool."""
+    def tool(
+        self, *, name: str | None = None, boundary_type: str = TOOL_BOUNDARY_TYPE
+    ) -> Callable[[Callable[..., Any]], WrappedTool]:
+        """Decorate an async or sync function as a TraceFork tool.
+
+        ``boundary_type`` re-labels the boundary family (e.g. ``llm.demo`` for
+        a scripted LLM); it decides the span kind and replay family.
+        """
 
         def decorator(func: Callable[..., Any]) -> WrappedTool:
-            return self.wrap(func, name=name)
+            return self.wrap(func, name=name, boundary_type=boundary_type)
 
         return decorator
 
-    def wrap(self, func: Callable[..., Any], *, name: str | None = None) -> WrappedTool:
+    def wrap(
+        self,
+        func: Callable[..., Any],
+        *,
+        name: str | None = None,
+        boundary_type: str = TOOL_BOUNDARY_TYPE,
+    ) -> WrappedTool:
         """Wrap an existing function as a TraceFork tool."""
-        self._ensure_handler()
-        return WrappedTool(func, self._runtime, name=name)
+        self._ensure_handler(boundary_type)
+        return WrappedTool(func, self._runtime, name=name, boundary_type=boundary_type)
 
-    def _ensure_handler(self) -> None:
-        if not self._handler_registered:
-            self._runtime.registry.register(TOOL_BOUNDARY_TYPE, PythonToolHandler())
-            self._handler_registered = True
+    def _ensure_handler(self, boundary_type: str) -> None:
+        if boundary_type == TOOL_BOUNDARY_TYPE:
+            if not self._handler_registered:
+                self._runtime.registry.register(boundary_type, PythonToolHandler())
+                self._handler_registered = True
+            return
+        # Custom boundary types get their own handler registration.
+        self._runtime.registry.register(boundary_type, PythonToolHandler())
 
 
 __all__ = [

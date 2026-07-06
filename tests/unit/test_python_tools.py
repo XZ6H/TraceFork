@@ -242,3 +242,22 @@ async def test_replay_of_changed_arguments_fails_closed() -> None:
     with session, pytest.raises(ReplayMismatchError):
         await replayed("Munich")
     assert real_calls == []
+
+
+async def test_custom_boundary_type_maps_to_llm_span() -> None:
+    registry = BoundaryRegistry()
+    runtime = BoundaryRuntime(registry=registry)
+    tools = ToolBox(runtime)
+
+    @tools.tool(name="planner", boundary_type="llm.demo")
+    async def planner(order_id: int) -> dict[str, Any]:
+        return {"plan": ["get_customer"]}
+
+    with record("case") as rec:
+        await planner(31991)
+    (invocation,) = rec.trace.invocations
+    assert invocation.boundary_type == "llm.demo"
+    (span,) = rec.trace.spans
+    assert span.kind.value == "llm"
+    # The custom boundary type has its own handler for replay restore.
+    assert registry.handler_for("llm.demo") is not None
