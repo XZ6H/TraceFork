@@ -151,6 +151,12 @@ def format_mismatch(miss: MatchMiss) -> str:
         if differences:
             lines.append("Difference:")
             lines.extend(f"  {line}" for line in differences)
+        elif miss.closest.name != miss.name or miss.closest.boundary_type != miss.boundary_type:
+            lines.append(
+                "The arguments match a recorded interaction, but its boundary name differs: "
+                f"received {miss.boundary_type}.{miss.name}, "
+                f"recorded {miss.closest.boundary_type}.{miss.closest.name}."
+            )
         else:
             lines.append("The payloads differ only in fields excluded from matching.")
     else:

@@ -2,6 +2,7 @@
 
 import asyncio
 import importlib
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -84,6 +85,9 @@ def replay(
     live_tool: list[str] = typer.Option([], "--live-tool", help="Run one tool live by name."),
 ) -> None:
     """Replay a fixture while running the current agent code behind --entrypoint."""
+    cwd = str(Path.cwd())
+    if cwd not in sys.path:
+        sys.path.insert(0, cwd)
     try:
         envelope = parse_envelope(fixture_path.read_bytes())
         policy = _build_policy(list(live), list(live_tool))

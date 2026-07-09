@@ -1,0 +1,13 @@
+name: support-agent-regressions
+
+cases:
+
+  - name: expired-order-rejected
+    fixture: fixtures/fixed-run.json
+    entrypoint: support_agent.agent:run
+    expect:
+      tools:
+        require:
+          - check_refund_policy
+        forbid:
+          - refund_order

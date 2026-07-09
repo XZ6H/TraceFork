@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import importlib
 import json
+import sys
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -125,6 +126,9 @@ def run_suite(suite_path: Path) -> SuiteResult:
     """Run every case sequentially (TF-151) and collect evidence."""
     suite = load_suite(suite_path)
     root = suite_path.parent
+    # Entrypoint modules resolve relative to the suite file.
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
     results = [_run_case(case, root) for case in suite.cases]
     return SuiteResult(suite=suite.name, cases=results)
 
