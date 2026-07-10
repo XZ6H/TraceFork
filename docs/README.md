@@ -1,18 +1,20 @@
 # TraceFork Documentation
 
 Documents are added with the milestone that introduces the behavior they
-describe — no speculative prose. The mapping:
+describe.
 
-| Document | Introduces | Milestone |
-|---|---|---|
-| [concepts.md](concepts.md) | Traces, spans, boundaries, fixtures, policies | M1–M5 |
-| [trace-schema.md](trace-schema.md) | Trace and fixture JSON schemas, versions, integrity | M1 |
-| [matching.md](matching.md) | Canonicalization, fingerprints, occurrence matching, diagnostics | M4 |
-| [replay-semantics.md](replay-semantics.md) | Execution modes, policy resolution, hermetic guarantees | M5 |
-| [failure-model.md](failure-model.md) | Error hierarchy and failure semantics | M5 |
-| [adapters.md](adapters.md) | Boundary/adapter contract for integrations | M6 |
-| [architecture.md](architecture.md) | Package layers and runtime | M6 |
-| [trajectory-diff.md](trajectory-diff.md) | Alignment and divergence detection | M13 |
-| [security.md](security.md) | Redaction, secret handling, fixture integrity | M17 |
+| Document | Contents |
+|---|---|
+| [concepts.md](concepts.md) | Traces, spans, boundaries, fixtures, policies, execution modes |
+| [architecture.md](architecture.md) | Package layers, data flow, layering rules |
+| [trace-schema.md](trace-schema.md) | Trace and fixture JSON schemas, versions, integrity |
+| [matching.md](matching.md) | Canonicalization, fingerprints, occurrence matching, diagnostics |
+| [replay-semantics.md](replay-semantics.md) | Execution modes, policy resolution, hermetic guarantees |
+| [failure-model.md](failure-model.md) | Error hierarchy and fail-closed semantics |
+| [adapters.md](adapters.md) | Boundary/adapter contract for integrations |
+| [trajectory-diff.md](trajectory-diff.md) | Alignment, resource deltas, first divergence |
+| [security.md](security.md) | Redaction, secret handling, fixture integrity |
+| [examples/github-actions.md](examples/github-actions.md) | Running `tracefork eval` in CI |
 
-Architecture decisions are in [adr/](../adr/).
+Architecture decisions are in [adr/](../adr/); the end-to-end demo lives in
+[examples/support-agent](../examples/support-agent).
