@@ -82,36 +82,105 @@ def diff_traces(
 
 
 def _align(baseline: list[TrajectoryNode], candidate: list[TrajectoryNode]) -> list[DiffOp]:
-    """Deterministic LCS alignment over typed nodes (TF-130)."""
+    """Deterministic edit-script alignment over typed nodes (TF-130).
+
+    Myers' O(ND) shortest-edit-script algorithm (the algorithm behind
+    ``diff``/``git diff``): runtime scales with the number of *differences*,
+    so a 1,000-node diff with 200 edits costs milliseconds. Tie-breaking is
+    deterministic: removals before insertions, matching the LCS order the
+    earlier DP produced.
+    """
     n, m = len(baseline), len(candidate)
-    # lcs[i][j] = LCS length of baseline[i:] and candidate[j:]
-    lcs = [[0] * (m + 1) for _ in range(n + 1)]
-    for i in range(n - 1, -1, -1):
-        for j in range(m - 1, -1, -1):
-            if _equal(baseline[i], candidate[j]):
-                lcs[i][j] = 1 + lcs[i + 1][j + 1]
-            else:
-                lcs[i][j] = max(lcs[i + 1][j], lcs[i][j + 1])
+
+    # Trim the common prefix and suffix; Myers then runs on the middle only.
+    prefix = 0
+    while prefix < n and prefix < m and _equal(baseline[prefix], candidate[prefix]):
+        prefix += 1
+    suffix_a, suffix_b = n, m
+    while (
+        suffix_a > prefix
+        and suffix_b > prefix
+        and _equal(baseline[suffix_a - 1], candidate[suffix_b - 1])
+    ):
+        suffix_a -= 1
+        suffix_b -= 1
+
+    middle_ops = _myers(
+        baseline[prefix:suffix_a],
+        candidate[prefix:suffix_b],
+    )
 
     ops: list[DiffOp] = []
-    i = j = 0
-    while i < n and j < m:
-        if _equal(baseline[i], candidate[j]):
-            ops.append(DiffOp("match", baseline[i], candidate[j]))
-            i += 1
-            j += 1
-        elif lcs[i + 1][j] >= lcs[i][j + 1]:
-            ops.append(DiffOp("remove", baseline[i], None))
-            i += 1
+    for position in range(prefix):
+        ops.append(DiffOp("match", baseline[position], candidate[position]))
+    ops.extend(middle_ops)
+    # The trimmed common suffix matches pairwise (offsets stay aligned).
+    for offset in range(n - suffix_a):
+        ops.append(
+            DiffOp("match", baseline[suffix_a + offset], candidate[suffix_b + offset])
+        )
+    return ops
+
+
+def _myers(a: list[TrajectoryNode], b: list[TrajectoryNode]) -> list[DiffOp]:
+    """Myers O(ND) diff over the differing middle region."""
+    n, m = len(a), len(b)
+    if n == 0:
+        return [DiffOp("insert", None, node) for node in b]
+    if m == 0:
+        return [DiffOp("remove", node, None) for node in a]
+
+    max_d = n + m
+    v: dict[int, int] = {1: 0}
+    trace: list[dict[int, int]] = []
+    for d in range(max_d + 1):
+        trace.append(v.copy())
+        for k in range(-d, d + 1, 2):
+            # k == -d forces a removal-first tie-break (deterministic).
+            if k == -d or (k != d and v[k - 1] < v[k + 1]):
+                x = v[k + 1]  # insertion from candidate
+            else:
+                x = v[k - 1] + 1  # removal from baseline
+            y = x - k
+            while x < n and y < m and _equal(a[x], b[y]):
+                x += 1
+                y += 1
+            v[k] = x
+            if x >= n and y >= m:
+                return _myers_backtrack(trace, a, b)
+
+    raise AssertionError("unreachable: Myers edit distance is bounded by n + m")
+
+
+def _myers_backtrack(
+    trace: list[dict[int, int]], a: list[TrajectoryNode], b: list[TrajectoryNode]
+) -> list[DiffOp]:
+    ops: list[DiffOp] = []
+    x, y = len(a), len(b)
+    for d in range(len(trace) - 1, 0, -1):
+        v = trace[d]
+        k = x - y
+        # Same tie-break as the forward pass: removals before insertions.
+        if k == -d or (k != d and v[k - 1] < v[k + 1]):
+            prev_k = k + 1
         else:
-            ops.append(DiffOp("insert", None, candidate[j]))
-            j += 1
-    while i < n:
-        ops.append(DiffOp("remove", baseline[i], None))
-        i += 1
-    while j < m:
-        ops.append(DiffOp("insert", None, candidate[j]))
-        j += 1
+            prev_k = k - 1
+        prev_x = v[prev_k]
+        prev_y = prev_x - prev_k
+        while x > prev_x and y > prev_y:
+            ops.append(DiffOp("match", a[x - 1], b[y - 1]))
+            x -= 1
+            y -= 1
+        if x == prev_x:
+            ops.append(DiffOp("insert", None, b[y - 1]))
+        else:
+            ops.append(DiffOp("remove", a[x - 1], None))
+        x, y = prev_x, prev_y
+    while x > 0 and y > 0:
+        ops.append(DiffOp("match", a[x - 1], b[y - 1]))
+        x -= 1
+        y -= 1
+    ops.reverse()
     return ops
 
 
