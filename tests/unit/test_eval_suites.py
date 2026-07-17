@@ -195,3 +195,39 @@ def test_suite_invalid_yaml_exits_three(tmp_path: Path) -> None:
     suite_path.write_text("name: [unclosed", encoding="utf-8")
     result = _run_eval(suite_path)
     assert result.exit_code == 3
+
+
+def test_suite_case_timeout_exits_two(tmp_path: Path) -> None:
+    slow_agent = """\
+import asyncio
+
+from tracefork.bootstrap import tools
+
+
+@tools.tool(name="weather")
+async def weather(city):
+    return {"temperature": 21}
+
+
+async def run(input_data):
+    await asyncio.sleep(5)
+"""
+    slow_suite = """\
+name: timeout-suite
+
+cases:
+
+  - name: hangs
+    fixture: fixtures/weather-case.json
+    entrypoint: {module}:run
+    timeout_seconds: 0.2
+"""
+    fixtures_dir = tmp_path / "fixtures"
+    fixtures_dir.mkdir(exist_ok=True)
+    _make_incident_fixture(fixtures_dir)
+    (tmp_path / "suite_agent_slow.py").write_text(slow_agent, encoding="utf-8")
+    suite_path = tmp_path / "suite.yaml"
+    suite_path.write_text(slow_suite.format(module="suite_agent_slow"), encoding="utf-8")
+    result = _run_eval(suite_path)
+    assert result.exit_code == 2, result.output
+    assert "timed out" in result.output
