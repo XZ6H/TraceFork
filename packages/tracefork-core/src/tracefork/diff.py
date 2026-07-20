@@ -135,10 +135,9 @@ def _myers(a: list[TrajectoryNode], b: list[TrajectoryNode]) -> list[DiffOp]:
         trace.append(v.copy())
         for k in range(-d, d + 1, 2):
             # k == -d forces a removal-first tie-break (deterministic).
-            if k == -d or (k != d and v[k - 1] < v[k + 1]):
-                x = v[k + 1]  # insertion from candidate
-            else:
-                x = v[k - 1] + 1  # removal from baseline
+            takes_candidate = k == -d or (k != d and v[k - 1] < v[k + 1])
+            # candidate move = insertion; baseline move = removal.
+            x = v[k + 1] if takes_candidate else v[k - 1] + 1
             y = x - k
             while x < n and y < m and _equal(a[x], b[y]):
                 x += 1
@@ -159,10 +158,8 @@ def _myers_backtrack(
         v = trace[d]
         k = x - y
         # Same tie-break as the forward pass: removals before insertions.
-        if k == -d or (k != d and v[k - 1] < v[k + 1]):
-            prev_k = k + 1
-        else:
-            prev_k = k - 1
+        came_from_candidate = k == -d or (k != d and v[k - 1] < v[k + 1])
+        prev_k = k + 1 if came_from_candidate else k - 1
         prev_x = v[prev_k]
         prev_y = prev_x - prev_k
         while x > prev_x and y > prev_y:

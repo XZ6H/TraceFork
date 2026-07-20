@@ -43,6 +43,8 @@ fails with diagnostics. It never silently calls the real dependency.
 ```python
 from tracefork import ToolBox, record
 from tracefork.boundaries import BoundaryRegistry, BoundaryRuntime
+from tracefork.serialization import build_envelope
+from tracefork.replay import ReplaySession
 
 registry = BoundaryRegistry()
 runtime = BoundaryRuntime(registry=registry)
