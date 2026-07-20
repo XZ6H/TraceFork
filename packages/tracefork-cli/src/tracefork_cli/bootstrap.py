@@ -24,14 +24,15 @@ def main() -> int:
     name = os.environ.get("TRACEFORK_RECORD_NAME") or Path(script).stem
 
     error: BaseException | None = None
-    with record(name) as rec:
-        try:
+    try:
+        # The try/except must sit OUTSIDE the recording context so the
+        # escaping exception is what closes the session (status: failed).
+        with record(name) as rec:
             runpy.run_path(script, run_name="__main__")
-        except SystemExit as exc:
-            if exc.code not in (None, 0):
-                error = exc
-        except BaseException as exc:  # the failure is recorded in the trace
-            error = exc
+    except SystemExit as exc:
+        error = None if exc.code in (None, 0) else exc
+    except BaseException as exc:  # the failure is recorded in the trace
+        error = exc
 
     fixture_dir = Path(".tracefork/fixtures")
     store = FilesystemFixtureStore(fixture_dir)

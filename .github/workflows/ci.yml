@@ -22,5 +22,5 @@ jobs:
         run: uv sync --locked
       - name: Type check
         run: uv run mypy packages/
-      - name: Test
-        run: uv run pytest
+      - name: Test with coverage
+        run: uv run pytest --cov=packages --cov-report=term-missing

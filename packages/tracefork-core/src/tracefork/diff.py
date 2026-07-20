@@ -116,9 +116,7 @@ def _align(baseline: list[TrajectoryNode], candidate: list[TrajectoryNode]) -> l
     ops.extend(middle_ops)
     # The trimmed common suffix matches pairwise (offsets stay aligned).
     for offset in range(n - suffix_a):
-        ops.append(
-            DiffOp("match", baseline[suffix_a + offset], candidate[suffix_b + offset])
-        )
+        ops.append(DiffOp("match", baseline[suffix_a + offset], candidate[suffix_b + offset]))
     return ops
 
 

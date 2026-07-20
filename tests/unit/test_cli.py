@@ -218,3 +218,26 @@ def test_diff_reports_trajectory_and_resources(workspace: Path) -> None:
     assert "+ tool:weather" in result.output
     assert "First divergence" in result.output
     assert "tool_calls: 1 -> 2" in result.output
+
+
+def test_record_failing_script_saves_failed_fixture(workspace: Path) -> None:
+    script = workspace / "broken_script.py"
+    script.write_text(
+        "import asyncio\n"
+        "from tracefork.bootstrap import tools\n"
+        "\n"
+        "@tools.tool()\n"
+        "async def greet(name):\n"
+        "    raise RuntimeError('tool exploded')\n"
+        "\n"
+        "asyncio.run(greet('world'))\n",
+        encoding="utf-8",
+    )
+    result = runner.invoke(app, ["record", "--name", "broken", "python", str(script)])
+    assert result.exit_code == 2, result.output
+
+    fixture_path = workspace / ".tracefork" / "fixtures" / "broken.json"
+    assert fixture_path.exists()  # the failed execution is still recorded
+    envelope = json.loads(fixture_path.read_text(encoding="utf-8"))
+    assert envelope["trace"]["status"] == "failed"
+    assert envelope["trace"]["invocations"][0]["metadata"]["error"]["type"] == "RuntimeError"

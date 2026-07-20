@@ -16,6 +16,7 @@ from tracefork.diff import diff_traces
 from tracefork.models import BoundaryInvocation, Provenance, Span, SpanKind, Trace
 from tracefork.replay import ReplaySession
 from tracefork.serialization import build_envelope, parse_envelope
+
 from tests.conftest import EchoHandler
 
 T0 = datetime(2026, 9, 2, 15, 0, 0, tzinfo=UTC)

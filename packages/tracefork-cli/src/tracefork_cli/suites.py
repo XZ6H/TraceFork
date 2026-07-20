@@ -72,6 +72,7 @@ class SuiteCase(BaseModel):
     entrypoint: str
     replay: CaseReplay = Field(default_factory=CaseReplay)
     expect: ExpectationsSpec = Field(default_factory=ExpectationsSpec)
+    timeout_seconds: float | None = None
 
 
 class Suite(BaseModel):
@@ -153,7 +154,12 @@ def _run_case(case: SuiteCase, root: Path) -> CaseResult:
     async def execute() -> tuple[str, list[str]]:
         with session:
             try:
-                await entry(envelope.trace.input)
+                call = entry(envelope.trace.input)
+                if case.timeout_seconds is not None:
+                    call = asyncio.wait_for(call, timeout=case.timeout_seconds)
+                await call
+            except TimeoutError:
+                return "error", [f"entrypoint timed out after {case.timeout_seconds}s"]
             except ReplayError as exc:
                 return "failed", [f"replay mismatch: {str(exc).splitlines()[0]}"]
             except Exception as exc:

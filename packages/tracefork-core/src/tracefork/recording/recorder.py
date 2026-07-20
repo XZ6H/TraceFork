@@ -5,6 +5,7 @@ is appended to the session's trace. The context manager is dual-mode: it works
 as a sync ``with`` and an async ``async with``.
 """
 
+import threading
 import uuid
 from datetime import UTC, datetime
 from types import TracebackType
@@ -62,6 +63,8 @@ class Recording:
         )
         self.redaction = _build_redaction_engine(redact)
         self._finished = False
+        # Sync clients instrumented per thread may land here concurrently.
+        self._occurrence_lock = threading.Lock()
         self._occurrence_counts: dict[tuple[str, str, str | None, str | None], int] = {}
 
     def start_span(self, name: str, kind: SpanKind, input: Any = None) -> Span:
@@ -119,8 +122,9 @@ class Recording:
         repeated identical calls stay distinguishable.
         """
         key = (boundary_type, name, fingerprint, parent_span_id)
-        count = self._occurrence_counts.get(key, 0)
-        self._occurrence_counts[key] = count + 1
+        with self._occurrence_lock:
+            count = self._occurrence_counts.get(key, 0)
+            self._occurrence_counts[key] = count + 1
         return count
 
     def finish(self, error: BaseException | None = None) -> None:
