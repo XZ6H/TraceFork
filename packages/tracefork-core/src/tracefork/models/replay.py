@@ -95,5 +95,5 @@ class BoundaryInvocation(BaseModel):
     span_id: str = Field(min_length=1)
     parent_span_id: str | None = None
     parent_name: str | None = None
-    occurrence: int = 0
+    occurrence: int = Field(default=0, ge=0)
     metadata: dict[str, Any] = Field(default_factory=dict)

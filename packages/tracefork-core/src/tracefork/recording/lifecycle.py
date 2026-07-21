@@ -58,7 +58,12 @@ class _SpanContext:
 
     def _close(self, error: BaseException | None) -> None:
         if self._token is not None:
-            current_span.reset(self._token)
+            try:
+                current_span.reset(self._token)
+            except ValueError:
+                # Token was created in a foreign context (e.g. a leaked span
+                # from a finished task). Nothing to restore in this context.
+                pass
             self._token = None
         if self._recording is not None and self._span is not None:
             self._recording.finish_span(self._span, error)

@@ -10,8 +10,13 @@ from typing import Any
 
 import pydantic
 
-from tracefork.errors import FixtureCorruptError, FixtureVersionError
-from tracefork.serialization.fixture import SUPPORTED_FIXTURE_VERSION, FixtureEnvelope
+from tracefork.errors import FixtureCorruptError, FixtureVersionError, GraphError
+from tracefork.serialization.fixture import (
+    SUPPORTED_FIXTURE_VERSION,
+    SUPPORTED_SCHEMA_VERSIONS,
+    FixtureEnvelope,
+)
+from tracefork.trajectory import build_graph
 
 
 def parse_envelope(data: bytes) -> FixtureEnvelope:
@@ -30,6 +35,16 @@ def parse_envelope(data: bytes) -> FixtureEnvelope:
         msg = f"unsupported fixture_version {version!r}, supported: {SUPPORTED_FIXTURE_VERSION!r}"
         raise FixtureVersionError(msg)
 
+    trace_raw = raw.get("trace")
+    if isinstance(trace_raw, dict):
+        schema_version = trace_raw.get("schema_version")
+        if schema_version not in SUPPORTED_SCHEMA_VERSIONS:
+            msg = (
+                f"unsupported trace schema_version {schema_version!r}, "
+                f"supported: {sorted(SUPPORTED_SCHEMA_VERSIONS)}"
+            )
+            raise FixtureVersionError(msg)
+
     try:
         envelope = FixtureEnvelope.model_validate(raw)
     except pydantic.ValidationError as exc:
@@ -43,4 +58,12 @@ def parse_envelope(data: bytes) -> FixtureEnvelope:
             f"(declared {envelope.integrity.digest[:16]}..., computed {expected[:16]}...)"
         )
         raise FixtureCorruptError(msg)
+
+    # ADR 0005: loading validates the span graph, so corrupted or malformed
+    # imported traces fail here instead of surfacing mid-replay.
+    try:
+        build_graph(envelope.trace)
+    except GraphError as exc:
+        msg = f"trace graph is invalid: {exc}"
+        raise FixtureCorruptError(msg) from exc
     return envelope

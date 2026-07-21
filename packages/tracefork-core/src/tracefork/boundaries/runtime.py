@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from tracefork.boundaries.base import LiveCall, boundary_span_kind
 from tracefork.boundaries.registry import BoundaryRegistry
-from tracefork.canonicalization import Canonicalizer
+from tracefork.canonicalization import Canonicalizer, canonicalize
 from tracefork.errors import AdapterError, RecordingError, ReplayError, ReplayPolicyError
 from tracefork.models import (
     BoundaryInvocation,
@@ -196,6 +196,18 @@ class BoundaryRuntime:
                     )
                 )
                 raise
+            # Responses must be JSON-safe too (adapters.md): a response that
+            # cannot be canonicalized is an adapter contract violation — fail
+            # here and persist nothing (the span is withdrawn).
+            try:
+                response.response = canonicalize(response.response)
+            except TypeError as exc:
+                recording.trace.spans.remove(span)
+                msg = (
+                    f"boundary {boundary_type}.{name} response is not "
+                    f"canonicalizable: {exc}"
+                )
+                raise AdapterError(msg) from exc
             span.output = response.response
             recording.finish_span(span, None)
             recording.record_invocation(

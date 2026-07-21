@@ -38,7 +38,17 @@ def canonicalize(value: Any) -> Any:
     if isinstance(value, Enum):
         return canonicalize(value.value)
     if isinstance(value, dict):
-        return {str(key): canonicalize(item) for key, item in value.items()}
+        result: dict[str, Any] = {}
+        for key, item in value.items():
+            key_text = str(key)
+            if key_text in result:
+                msg = (
+                    f"conflicting dictionary keys after string conversion: {key!r} "
+                    f"collides with an existing key {key_text!r}"
+                )
+                raise TypeError(msg)
+            result[key_text] = canonicalize(item)
+        return result
     if isinstance(value, list | tuple):
         return [canonicalize(item) for item in value]
     msg = f"object of type {type(value).__name__} is not canonicalizable"

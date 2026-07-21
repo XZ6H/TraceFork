@@ -39,9 +39,13 @@ def test_canonical_json_is_insertion_order_independent(payload) -> None:
 @settings(max_examples=30, deadline=None, suppress_health_check=[HealthCheck.too_slow])
 @given(payload=json_values, extra=st.text(min_size=0, max_size=8))
 def test_fingerprints_survive_ignore_rule_changes_of_untouched_fields(payload, extra) -> None:
-    """Adding ignore rules for absent keys must not change the fingerprint."""
+    """Adding ignore rules for keys that cannot occur must not change the fingerprint.
+
+    The rule is longer than any generated payload key (max 8 chars), so it is
+    guaranteed absent.
+    """
     canonicalizer = Canonicalizer()
-    with_rules = Canonicalizer(ignore=[f"absent_{extra}"])
+    with_rules = Canonicalizer(ignore=[f"__absent_{extra}__"])
     assert canonicalizer.fingerprint("tool", "t", payload) == with_rules.fingerprint(
         "tool", "t", payload
     )

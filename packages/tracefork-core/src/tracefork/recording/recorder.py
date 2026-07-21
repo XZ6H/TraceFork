@@ -63,6 +63,7 @@ class Recording:
         )
         self.redaction = _build_redaction_engine(redact)
         self._finished = False
+        self._open_spans: list[Span] = []
         # Sync clients instrumented per thread may land here concurrently.
         self._occurrence_lock = threading.Lock()
         self._occurrence_counts: dict[tuple[str, str, str | None, str | None], int] = {}
@@ -80,12 +81,19 @@ class Recording:
         )
         # Append order is start order, never completion order (ADR 0005).
         self.trace.spans.append(span)
+        self._open_spans.append(span)
         return span
 
     def finish_span(self, span: Span, error: BaseException | None) -> None:
         """Close a span, recording the exception when one escaped it (TF-024)."""
+        if self._finished:
+            # finish() already swept this span to ERROR; a late context exit
+            # must not resurrect it.
+            return
         span.completed_at = datetime.now(UTC)
         span.output = self.redaction.apply(span.output)
+        if span in self._open_spans:
+            self._open_spans.remove(span)
         if error is None:
             span.status = SpanStatus.OK
             return
@@ -132,6 +140,15 @@ class Recording:
         if self._finished:
             return
         self._finished = True
+        # A span left open is a user bug (context manager never exited); sweep
+        # it to ERROR so no span is ever persisted in RUNNING state.
+        for leaked in self._open_spans:
+            leaked.status = SpanStatus.ERROR
+            leaked.error = SpanError(
+                exception_type="RecordingError",
+                message="span was still open when the recording finished",
+            )
+        self._open_spans.clear()
         self.trace.completed_at = datetime.now(UTC)
         self.trace.status = TraceStatus.FAILED if error is not None else TraceStatus.COMPLETED
 
@@ -162,10 +179,16 @@ class _RecordingContext:
         traceback: TracebackType | None,
     ) -> Literal[False]:
         if self._execution_token is not None:
-            current_execution.reset(self._execution_token)
+            try:
+                current_execution.reset(self._execution_token)
+            except ValueError:
+                pass
             self._execution_token = None
         if self._recording_token is not None:
-            current_recording.reset(self._recording_token)
+            try:
+                current_recording.reset(self._recording_token)
+            except ValueError:
+                pass
             self._recording_token = None
         self.recording.finish(exc_value)
         return False

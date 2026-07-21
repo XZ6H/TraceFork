@@ -5,7 +5,9 @@ Syntax deliberately small for v0.1:
 - bare names (``timestamp``) ignore that key at any nesting level.
 """
 
-from tracefork.canonicalization import Canonicalizer, IgnoreRules
+import pytest
+
+from tracefork.canonicalization import Canonicalizer, IgnoreRules, canonical_json
 
 
 def test_ignore_removes_top_level_key() -> None:
@@ -68,3 +70,29 @@ def test_canonicalizer_rejects_unsupported_objects() -> None:
         assert "Mystery" in str(exc)
     else:  # pragma: no cover
         raise AssertionError("expected TypeError")
+
+
+def test_int_and_str_key_collision_rejected() -> None:
+    # {1: "a"} and {"1": "b"} would both map to key "1", silently losing data
+    # and corrupting fingerprints — reject instead.
+    with pytest.raises(TypeError, match="conflict"):
+        canonical_json({1: "a", "1": "b"})
+
+
+def test_bool_key_collision_rejected() -> None:
+    with pytest.raises(TypeError, match="conflict"):
+        canonical_json({True: "a", "True": "b"})
+
+
+def test_non_string_keys_without_collision_are_converted() -> None:
+    assert canonical_json({1: "a", 2: "b"}) == '{"1":"a","2":"b"}'
+
+
+def test_very_deep_nesting_raises_recursion_error_not_silent_loss() -> None:
+    deep: dict = {}
+    current = deep
+    for _ in range(20000):
+        current["child"] = {}
+        current = current["child"]
+    with pytest.raises(RecursionError):
+        canonical_json(deep)

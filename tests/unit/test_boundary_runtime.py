@@ -7,6 +7,7 @@ Key invariants pinned here:
 - REPLAY mode without a session fails closed: the live call never happens.
 """
 
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -219,3 +220,64 @@ async def test_record_mode_returns_restored_native_response() -> None:
     assert native == {"native": "live-result"}  # caller gets the native shape
     assert rec.trace.invocations[0].response == "live-result"  # canonical stored
     assert rec.trace.spans[0].output == "live-result"
+
+
+class NonSerializableHandler:
+    """Handler whose canonical response contains an unsupported object."""
+
+    async def execute(self, request, call_live):
+        from tracefork.models import BoundaryResponse
+
+        return BoundaryResponse(response={"blob": {1, 2}, "live": await call_live()}, metadata={})
+
+    def restore(self, response, metadata):
+        return response
+
+
+async def test_non_canonicalizable_response_fails_before_persistence() -> None:
+    registry = BoundaryRegistry()
+    registry.register("llm.test", NonSerializableHandler())
+    runtime = BoundaryRuntime(registry=registry)
+    calls: list[int] = []
+
+    async def live() -> str:
+        calls.append(1)
+        return "ran"
+
+    with record("case") as rec, pytest.raises(AdapterError, match="canonicalizable"):
+        await runtime.invoke("llm.test", "planner", {"a": 1}, live)
+    assert calls == [1]  # the live call ran, but nothing was persisted
+    assert rec.trace.invocations == []
+    assert rec.trace.spans == []
+
+
+async def test_handler_metadata_overrides_request_metadata(
+    echo_registry: BoundaryRegistry,
+) -> None:
+    runtime = BoundaryRuntime(registry=echo_registry)
+    with record("case") as rec:
+        await runtime.invoke(
+            "tool.echo",
+            "search",
+            {"q": 1},
+            _counting_live([]),
+            metadata={"echo": False, "source": "user"},
+        )
+    (invocation,) = rec.trace.invocations
+    # Response metadata wins on collision; request-only keys survive.
+    assert invocation.metadata["echo"] is True
+    assert invocation.metadata["source"] == "user"
+
+
+async def test_datetime_response_canonicalized_for_json_safety(
+    echo_registry: BoundaryRegistry,
+) -> None:
+    runtime = BoundaryRuntime(registry=echo_registry)
+
+    async def live() -> dict:
+        return {"at": datetime(2026, 9, 2, 17, 0, tzinfo=UTC)}
+
+    with record("case") as rec:
+        await runtime.invoke("tool.echo", "when", {}, live)
+    (invocation,) = rec.trace.invocations
+    assert invocation.response == {"at": "2026-09-02T17:00:00Z"}

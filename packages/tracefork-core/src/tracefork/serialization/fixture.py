@@ -12,9 +12,10 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from tracefork.canonicalization import canonical_json_bytes
-from tracefork.models import Trace
+from tracefork.models import SCHEMA_VERSION, Trace
 
 SUPPORTED_FIXTURE_VERSION = "1"
+SUPPORTED_SCHEMA_VERSIONS = frozenset({SCHEMA_VERSION})
 
 
 class FixtureIntegrity(BaseModel):

@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class SpanKind(StrEnum):
@@ -70,3 +70,10 @@ class Span(BaseModel):
         if value.tzinfo is None:
             return value.replace(tzinfo=UTC)
         return value.astimezone(UTC)
+
+    @model_validator(mode="after")
+    def _validate_ordering(self) -> "Span":
+        if self.completed_at is not None and self.completed_at < self.started_at:
+            msg = "completed_at must not be earlier than started_at"
+            raise ValueError(msg)
+        return self

@@ -183,3 +183,27 @@ class TestProvenance:
         provenance = Provenance(git_commit="84aad91", git_dirty=False, git_branch="main")
         restored = Provenance.model_validate_json(provenance.model_dump_json())
         assert restored == provenance
+
+
+class TestTemporalValidation:
+    def test_span_completed_before_started_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="completed_at"):
+            make_span(completed_at=T0 - timedelta(seconds=1))
+
+    def test_span_completed_at_or_after_started_allowed(self) -> None:
+        make_span(completed_at=T0)  # equal is fine (zero-duration span)
+
+    def test_trace_completed_before_started_rejected(self) -> None:
+        with pytest.raises(ValidationError, match="completed_at"):
+            make_trace(completed_at=T0 - timedelta(seconds=1))
+
+    def test_negative_occurrence_rejected(self) -> None:
+        from tracefork.models import BoundaryInvocation
+
+        with pytest.raises(ValidationError):
+            BoundaryInvocation(
+                boundary_type="tool.python",
+                name="x",
+                span_id="sp_1",
+                occurrence=-1,
+            )
