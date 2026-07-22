@@ -24,6 +24,12 @@ REDACTED = "[REDACTED]"
 # Secret-safe defaults (TF-081): matched case-insensitively.
 _SECRET_HEADERS = {"authorization", "cookie", "set-cookie", "x-api-key", "proxy-authorization"}
 
+# Content-coding headers describe the WIRE encoding, but transports hand us
+# decoded payloads. Recording them makes the replayed httpx.Response try to
+# decompress already-decompressed content (found by the live smoke), so they
+# are stripped on both directions.
+_CONTENT_CODING_HEADERS = {"content-encoding", "content-length", "transfer-encoding"}
+
 
 class HTTPXHandler:
     """Translates httpx request/response objects to and from canonical data."""
@@ -82,10 +88,15 @@ class TraceForkAsyncTransport(httpx.AsyncBaseTransport):
 
 
 def _request_payload(request: httpx.Request) -> dict[str, Any]:
+    headers = {
+        key: value
+        for key, value in _safe_headers(request.headers).items()
+        if key not in _CONTENT_CODING_HEADERS
+    }
     payload: dict[str, Any] = {
         "method": request.method,
         "url": str(request.url),
-        "headers": _safe_headers(request.headers),
+        "headers": headers,
     }
     body = _decode_body(request.headers.get("content-type"), request.content)
     if body is not None:
@@ -94,10 +105,15 @@ def _request_payload(request: httpx.Request) -> dict[str, Any]:
 
 
 def _response_payload(request_payload: dict[str, Any], response: httpx.Response) -> dict[str, Any]:
+    headers = {
+        key: value
+        for key, value in _safe_headers(response.headers).items()
+        if key not in _CONTENT_CODING_HEADERS
+    }
     payload: dict[str, Any] = {
         "request": request_payload,
         "status_code": response.status_code,
-        "headers": _safe_headers(response.headers),
+        "headers": headers,
     }
     body = _decode_body(response.headers.get("content-type"), response.content)
     if body is not None:

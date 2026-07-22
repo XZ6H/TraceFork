@@ -1,5 +1,6 @@
 """TF-080..082: httpx adapter — interception, secret-safe defaults, hermetic replay."""
 
+import json
 from typing import Any
 
 import httpx
@@ -202,4 +203,54 @@ async def test_binary_bodies_round_trip_losslessly() -> None:
                 headers={"content-type": "application/octet-stream"},
             )
     assert response.content == binary  # replayed response is byte-identical
+    assert replay_calls == []
+
+
+async def test_content_encoding_header_does_not_break_replay() -> None:
+    """Real transports auto-decompress but leave content-encoding headers.
+
+    Recording must strip content-coding headers, otherwise the replayed
+    httpx.Response decompresses already-decompressed content and crashes
+    (found by the live smoke against a real API).
+    """
+    import gzip as gzip_module
+
+    calls: list[httpx.Request] = []
+    compressed = gzip_module.compress(json.dumps(JSON_PAYLOAD).encode("utf-8"))
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request)
+        # Simulate a decompressing transport: the returned object carries
+        # decoded content but stale wire headers (set post-construction).
+        response = httpx.Response(200, content=json.dumps(JSON_PAYLOAD).encode("utf-8"))
+        response.headers["content-encoding"] = "gzip"
+        response.headers["content-length"] = str(len(compressed))
+        return response
+
+    registry = BoundaryRegistry()
+    runtime = BoundaryRuntime(registry=registry)
+    client = httpx.AsyncClient(
+        transport=TraceForkAsyncTransport(inner=httpx.MockTransport(handler), runtime=runtime)
+    )
+
+    async with client:
+        with record("case") as rec:
+            response = await client.get("https://api.example.test/data")
+    assert response.json() == JSON_PAYLOAD
+    (invocation,) = rec.trace.invocations
+    assert "content-encoding" not in invocation.response["headers"]
+
+    from tracefork.replay import ReplaySession
+
+    replay_calls: list[httpx.Request] = []
+    runtime2 = BoundaryRuntime(registry=registry)
+    offline = httpx.AsyncClient(
+        transport=TraceForkAsyncTransport(inner=dead_transport(replay_calls), runtime=runtime2)
+    )
+    session = ReplaySession(fixture=build_envelope(rec.trace), registry=registry)
+    async with offline:
+        with session:
+            replayed = await offline.get("https://api.example.test/data")
+    assert replayed.status_code == 200
+    assert replayed.json() == JSON_PAYLOAD  # must not raise DecodingError
     assert replay_calls == []
