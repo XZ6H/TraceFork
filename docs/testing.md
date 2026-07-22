@@ -14,7 +14,7 @@ failure path has dedicated cases. Run everything with `uv run pytest`.
 | Integration | `tests/integration/` | Real servers, real processes, end-to-end slices |
 | Property | `tests/property/` | Hypothesis: round-trips, order independence, redaction |
 | Performance | `tests/performance/` | PRD §37 targets with CI-safe margins |
-| Live smoke | `scripts/live_smoke.py` | 49 gated checks against a real OpenAI-compatible API (maintainer task) |
+| Live smoke | `scripts/live_smoke.py` | 114 gated checks against a real OpenAI-compatible API across 18 sections (maintainer task) |
 
 ## Coverage matrix (surface → cases → where)
 
