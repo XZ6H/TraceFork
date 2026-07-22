@@ -8,6 +8,7 @@ in v0.1: the boundary runtime is async-first.
 
 from __future__ import annotations
 
+import base64
 import json
 from typing import Any
 
@@ -112,7 +113,12 @@ def _decode_body(content_type: str | None, content: bytes) -> dict[str, Any] | N
             return {"json": json.loads(content)}
         except json.JSONDecodeError:
             pass
-    return {"content": content.decode("utf-8", errors="replace")}
+    try:
+        return {"content": content.decode("utf-8")}
+    except UnicodeDecodeError:
+        # Binary bodies are stored base64 so replays are byte-identical
+        # (errors="replace" would silently corrupt them).
+        return {"content_base64": base64.b64encode(content).decode("ascii")}
 
 
 def _request_content(recorded_request: dict[str, Any]) -> bytes:
@@ -120,6 +126,8 @@ def _request_content(recorded_request: dict[str, Any]) -> bytes:
         return str(json.dumps(recorded_request["json"])).encode("utf-8")
     if "content" in recorded_request:
         return str(recorded_request["content"]).encode("utf-8")
+    if "content_base64" in recorded_request:
+        return base64.b64decode(recorded_request["content_base64"])
     return b""
 
 
@@ -128,6 +136,8 @@ def _response_content(recorded_response: dict[str, Any]) -> bytes:
         return str(json.dumps(recorded_response["json"])).encode("utf-8")
     if "content" in recorded_response:
         return str(recorded_response["content"]).encode("utf-8")
+    if "content_base64" in recorded_response:
+        return base64.b64decode(recorded_response["content_base64"])
     return b""
 
 

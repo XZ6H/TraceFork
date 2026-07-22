@@ -12,11 +12,15 @@ from tracefork_httpx import TraceForkAsyncTransport
 JSON_PAYLOAD: dict[str, Any] = {"orders": [{"id": 1, "total": 149.0}]}
 
 
-def real_transport(calls: list[httpx.Request]) -> httpx.MockTransport:
+def real_transport(calls: list[httpx.Request], body: bytes | None = None) -> httpx.MockTransport:
     """Stands in for the network in unit tests."""
 
     def handler(request: httpx.Request) -> httpx.Response:
         calls.append(request)
+        if body is not None:
+            return httpx.Response(
+                200, content=body, headers={"content-type": "application/octet-stream"}
+            )
         return httpx.Response(200, json=JSON_PAYLOAD, headers={"x-request-id": "req-9"})
 
     return httpx.MockTransport(handler)
@@ -159,3 +163,43 @@ async def test_normal_mode_passthrough(echo_registry: BoundaryRegistry) -> None:
         response = await client.get("https://api.example.test/orders/1")
     assert response.json() == JSON_PAYLOAD
     assert len(calls) == 1
+
+
+async def test_binary_bodies_round_trip_losslessly() -> None:
+    """Octet-stream bodies must survive record→replay byte-for-byte."""
+    binary = bytes(range(256))
+    calls: list[httpx.Request] = []
+    registry = BoundaryRegistry()
+    runtime = BoundaryRuntime(registry=registry)
+    client = httpx.AsyncClient(
+        transport=TraceForkAsyncTransport(inner=real_transport(calls, binary), runtime=runtime)
+    )
+
+    async with client:
+        with record("case") as rec:
+            await client.post(
+                "https://api.example.test/upload",
+                content=binary,
+                headers={"content-type": "application/octet-stream"},
+            )
+
+    (invocation,) = rec.trace.invocations
+    assert invocation.request["content_base64"] is not None
+
+    from tracefork.replay import ReplaySession
+
+    replay_calls: list[httpx.Request] = []
+    runtime2 = BoundaryRuntime(registry=registry)
+    offline = httpx.AsyncClient(
+        transport=TraceForkAsyncTransport(inner=dead_transport(replay_calls), runtime=runtime2)
+    )
+    session = ReplaySession(fixture=build_envelope(rec.trace), registry=registry)
+    async with offline:
+        with session:
+            response = await offline.post(
+                "https://api.example.test/upload",
+                content=binary,
+                headers={"content-type": "application/octet-stream"},
+            )
+    assert response.content == binary  # replayed response is byte-identical
+    assert replay_calls == []

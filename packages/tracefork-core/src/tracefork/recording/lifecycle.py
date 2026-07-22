@@ -5,6 +5,7 @@ a no-op, so instrumented agent code works with and without TraceFork enabled.
 Dual sync/async usage like ``record()``.
 """
 
+from contextlib import suppress
 from types import TracebackType
 from typing import Any, Literal
 
@@ -58,12 +59,10 @@ class _SpanContext:
 
     def _close(self, error: BaseException | None) -> None:
         if self._token is not None:
-            try:
+            # A ValueError means the token was created in a foreign context
+            # (e.g. a leaked span from a finished task) — nothing to restore.
+            with suppress(ValueError):
                 current_span.reset(self._token)
-            except ValueError:
-                # Token was created in a foreign context (e.g. a leaked span
-                # from a finished task). Nothing to restore in this context.
-                pass
             self._token = None
         if self._recording is not None and self._span is not None:
             self._recording.finish_span(self._span, error)

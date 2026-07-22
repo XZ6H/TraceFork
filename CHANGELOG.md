@@ -7,7 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Fixture loading now validates the trace `schema_version` and the span graph
+  (cycles, duplicate span IDs, missing parents) per ADR 0002/0005 — invalid
+  graphs fail with `FixtureCorruptError` at load time.
+- Boundary responses are canonicalized before persistence; non-JSON-safe
+  responses fail with `AdapterError` and nothing is written.
+- Non-UTF-8 HTTP bodies are stored base64 so replays are byte-identical.
+- Recordings sweep never-closed spans to `ERROR` on finish; late context
+  exits cannot resurrect them; contextvar resets tolerate foreign contexts.
+- Traces and spans reject `completed_at` earlier than `started_at`;
+  invocations reject negative occurrence indices; canonical JSON rejects
+  dictionary key collisions (`1` vs `"1"`).
+- Trajectory diff uses Myers' O(ND) alignment: a 1,000-node diff with 200
+  edits runs in ~6 ms (PRD target: < 100 ms).
+
 ### Added
+
+- Test plan and coverage matrix (`docs/testing.md`); property-based tests
+  (round trips, order independence, redaction, graphs); performance smoke
+  tests for the PRD §37 targets; concurrency tests for parallel replays;
+  gated live smoke (`scripts/live_smoke.py`) validating adapters against a
+  real OpenAI-compatible API; per-case suite timeouts; coverage tooling in
+  CI; `py.typed` markers shipped in all wheels.
 
 - **Trace model and persistence**: `Trace`/`Span`/`Provenance` domain models
   with strict validation and UTC normalization (TF-010); canonical JSON

@@ -58,3 +58,11 @@ def test_non_repo_directory_degrades_to_nulls(tmp_path: Path) -> None:
     assert provenance.git_commit is None
     assert provenance.git_dirty is None
     assert provenance.git_branch is None
+
+
+def test_detached_head_degrades_branch_to_null(git_repo: Path) -> None:
+    _git(git_repo, "checkout", "--detach", "HEAD")
+    provenance = capture_git_provenance(git_repo)
+    assert provenance.git_commit is not None  # commit still known
+    assert provenance.git_branch is None  # no branch on detached HEAD
+    assert provenance.git_dirty is False

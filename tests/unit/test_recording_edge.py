@@ -3,7 +3,6 @@
 import asyncio
 
 import pytest
-
 from tracefork import record, span
 from tracefork.models import SpanKind, SpanStatus, TraceStatus
 from tracefork.recording.recorder import Recording
@@ -15,7 +14,7 @@ async def test_leaked_span_is_swept_to_error_on_finish() -> None:
         with record("case") as rec:
             ctx = span("leaked", kind=SpanKind.TOOL)
             ctx.__enter__()  # user bug: span opened but never exited
-        return rec, ctx  # noqa: B023
+        return rec, ctx
 
     rec, ctx = await asyncio.create_task(leak())
     (leaked,) = rec.trace.spans
@@ -62,10 +61,8 @@ async def test_nested_recording_is_isolated_across_tasks() -> None:
     with record("outer") as outer:
 
         async def inner_task() -> None:
-            with record("inner") as inner, span("inner-span"):
+            with record("inner"), span("inner-span"):
                 await asyncio.sleep(0)
-                assert inner is not None
-            inner.trace  # keep reference
 
         await asyncio.create_task(inner_task())
         with span("outer-span"):

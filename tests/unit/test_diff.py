@@ -147,3 +147,32 @@ class TestResources:
         assert tokens.baseline is None
         assert tokens.candidate == 10
         assert tokens.change_percent is None
+
+
+class TestEdgeCases:
+    def test_empty_baseline_vs_nonempty_candidate(self) -> None:
+        baseline = make_trace([])
+        candidate = make_trace([("tool", "search")])
+        result = diff_traces(baseline, candidate)
+        assert [op.op for op in result.ops] == ["insert"]
+        assert result.first_divergence is not None
+        assert result.first_divergence.position == 0
+        assert result.first_divergence.reason == "inserted"
+
+    def test_kind_filter_leaving_both_empty_has_no_divergence(self) -> None:
+        baseline = make_trace([("agent", "root")])
+        candidate = make_trace([("agent", "root"), ("tool", "search")])
+        result = diff_traces(baseline, candidate, kinds=set())
+        assert result.ops == []
+        assert result.first_divergence is None
+
+    def test_incomplete_traces_report_null_duration(self) -> None:
+        baseline = make_trace([("tool", "search")])
+        candidate = make_trace([("tool", "search")])
+        baseline.completed_at = None
+        candidate.completed_at = None
+        result = diff_traces(baseline, candidate)
+        duration = next(d for d in result.resources if d.name == "duration_seconds")
+        assert duration.baseline is None
+        assert duration.candidate is None
+        assert duration.change_percent is None

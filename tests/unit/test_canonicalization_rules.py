@@ -6,7 +6,6 @@ Syntax deliberately small for v0.1:
 """
 
 import pytest
-
 from tracefork.canonicalization import Canonicalizer, IgnoreRules, canonical_json
 
 

@@ -7,6 +7,7 @@ as a sync ``with`` and an async ``async with``.
 
 import threading
 import uuid
+from contextlib import suppress
 from datetime import UTC, datetime
 from types import TracebackType
 from typing import Any, Literal
@@ -179,16 +180,12 @@ class _RecordingContext:
         traceback: TracebackType | None,
     ) -> Literal[False]:
         if self._execution_token is not None:
-            try:
+            with suppress(ValueError):
                 current_execution.reset(self._execution_token)
-            except ValueError:
-                pass
             self._execution_token = None
         if self._recording_token is not None:
-            try:
+            with suppress(ValueError):
                 current_recording.reset(self._recording_token)
-            except ValueError:
-                pass
             self._recording_token = None
         self.recording.finish(exc_value)
         return False

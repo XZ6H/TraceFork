@@ -241,3 +241,30 @@ def test_record_failing_script_saves_failed_fixture(workspace: Path) -> None:
     envelope = json.loads(fixture_path.read_text(encoding="utf-8"))
     assert envelope["trace"]["status"] == "failed"
     assert envelope["trace"]["invocations"][0]["metadata"]["error"]["type"] == "RuntimeError"
+
+
+def test_record_propagates_script_exit_code_and_saves_fixture(workspace: Path) -> None:
+    script = workspace / "exit_script.py"
+    script.write_text("import sys; sys.exit(3)\n", encoding="utf-8")
+    result = runner.invoke(app, ["record", "--name", "exited", "python", str(script)])
+    assert result.exit_code == 3
+    assert (workspace / ".tracefork" / "fixtures" / "exited.json").exists()
+
+
+def test_record_passes_script_arguments(workspace: Path) -> None:
+    script = workspace / "args_script.py"
+    script.write_text(
+        "import sys\nassert sys.argv[1] == 'arg1' and sys.argv[2] == 'arg2', sys.argv\n",
+        encoding="utf-8",
+    )
+    result = runner.invoke(app, ["record", "python", str(script), "arg1", "arg2"])
+    assert result.exit_code == 0, result.output
+
+
+def test_replay_invalid_live_target_exits_3(workspace: Path) -> None:
+    fixture_path = _record_weather_fixture(workspace)
+    result = runner.invoke(
+        app,
+        ["replay", str(fixture_path), "--entrypoint", "cliagent:run", "--live", "nope"],
+    )
+    assert result.exit_code == 3

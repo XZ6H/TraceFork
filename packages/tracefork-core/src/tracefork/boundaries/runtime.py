@@ -203,10 +203,7 @@ class BoundaryRuntime:
                 response.response = canonicalize(response.response)
             except TypeError as exc:
                 recording.trace.spans.remove(span)
-                msg = (
-                    f"boundary {boundary_type}.{name} response is not "
-                    f"canonicalizable: {exc}"
-                )
+                msg = f"boundary {boundary_type}.{name} response is not canonicalizable: {exc}"
                 raise AdapterError(msg) from exc
             span.output = response.response
             recording.finish_span(span, None)

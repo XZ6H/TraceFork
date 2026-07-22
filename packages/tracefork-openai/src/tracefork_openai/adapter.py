@@ -139,9 +139,6 @@ async def _invoke(
     *,
     sync_client: bool,
 ) -> Any:
-    if kwargs.get("args"):
-        msg = "OpenAI responses.create is keyword-only"
-        raise AdapterError(msg)
     model = kwargs.get("model") or "responses.create"
     stream = bool(kwargs.get("stream"))
     request_payload = {str(key): canonicalize_argument(value) for key, value in kwargs.items()}

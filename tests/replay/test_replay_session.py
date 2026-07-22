@@ -8,6 +8,7 @@ The core invariants:
 - Hermetic runs report zero live boundaries and zero network calls.
 """
 
+import asyncio
 from datetime import UTC, datetime
 from typing import Any
 
@@ -15,7 +16,7 @@ import pytest
 from tracefork import record
 from tracefork.boundaries import BoundaryRegistry, BoundaryRuntime, ReplayMode, ReplayPolicy
 from tracefork.canonicalization import Canonicalizer
-from tracefork.errors import ReplayMismatchError, ReplayPolicyError
+from tracefork.errors import ReplayError, ReplayMismatchError, ReplayPolicyError
 from tracefork.models import SpanKind
 from tracefork.replay import ReplaySession
 from tracefork.serialization import FixtureEnvelope, build_envelope
@@ -282,3 +283,65 @@ async def test_session_requires_registry_entry_to_restore(echo_registry: Boundar
     session = ReplaySession(fixture=fixture, registry=empty_registry, canonicalizer=canonicalizer)
     with session, pytest.raises(UnknownBoundaryError):
         await runtime.invoke("tool.echo", "search_orders", {"customer_id": 912}, live_counter([]))
+
+
+async def test_parallel_identical_replays_match_distinct_occurrences(
+    echo_registry: BoundaryRegistry,
+) -> None:
+    """Plan §34 concurrency: repeated identical calls replay stably under gather."""
+    runtime = BoundaryRuntime(registry=echo_registry)
+    with record("parallel-replay") as rec:
+        for _ in range(5):
+            await runtime.invoke("tool.echo", "search", {"q": "x"}, live_counter([]))
+    fixture = build_envelope(rec.trace, created_at=T0)
+
+    replay_runtime = BoundaryRuntime(registry=echo_registry)
+    session = ReplaySession(fixture=fixture, registry=echo_registry)
+
+    async def replay_one() -> str:
+        async def live() -> str:
+            raise AssertionError("must not run")
+
+        return await replay_runtime.invoke("tool.echo", "search", {"q": "x"}, live)
+
+    with session:
+        outputs = await asyncio.gather(*(replay_one() for _ in range(5)))
+
+    assert outputs == ["live-1"] * 5
+    assert session.result.matched == 5
+    assert session.result.unused_recordings == []
+
+
+async def test_live_boundary_that_raises_still_counted_live(
+    echo_registry: BoundaryRegistry,
+) -> None:
+    fixture = await record_two_tool_calls()
+    runtime = BoundaryRuntime(registry=echo_registry)
+    policy = ReplayPolicy(tools={"search_orders": ReplayMode.LIVE})
+
+    async def live() -> Any:
+        raise ValueError("live dependency down")
+
+    session = ReplaySession(fixture=fixture, registry=echo_registry, policy=policy)
+    with session, pytest.raises(ValueError):
+        await runtime.invoke("tool.echo", "search_orders", {"customer_id": 912}, live)
+
+    result = session.result
+    assert result.live_boundaries == ["tool.echo.search_orders"]
+    assert result.is_hermetic is False
+    # The failed live call is recorded with its error, like any boundary.
+    (invocation,) = result.trace.invocations
+    assert invocation.metadata["error"]["type"] == "ValueError"
+
+
+def test_result_before_enter_rejected(echo_registry: BoundaryRegistry) -> None:
+    fixture = build_envelope(_trace_stub(), created_at=T0)
+    session = ReplaySession(fixture=fixture, registry=echo_registry)
+    with pytest.raises(ReplayError, match="has not run"):
+        _ = session.result
+
+
+def _trace_stub() -> Any:
+    from tracefork.models import Provenance, Trace
+
+    return Trace(trace_id="tr_1", name="case", started_at=T0, provenance=Provenance())

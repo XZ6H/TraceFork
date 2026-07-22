@@ -328,3 +328,21 @@ async def test_replay_mismatch_fails_closed_with_diagnostics() -> None:
     with session, pytest.raises(ReplayMismatchError):
         await offline.responses.create(model="gpt-test", input="different question")
     assert replay_calls == []
+
+
+async def test_response_without_usage_records_null_metadata() -> None:
+    payload = {k: v for k, v in RESPONSE_PAYLOAD.items() if k != "usage"}
+    calls: list[httpx.Request] = []
+    registry = BoundaryRegistry()
+    runtime = BoundaryRuntime(registry=registry)
+    client = AsyncOpenAI(
+        api_key="k", http_client=httpx.AsyncClient(transport=json_transport(payload, calls))
+    )
+    instrument_openai(client, runtime)
+
+    with record("case") as rec:
+        await client.responses.create(model="gpt-test", input="hi")
+
+    (invocation,) = rec.trace.invocations
+    assert invocation.metadata["usage"] == {}
+    assert invocation.metadata["finish_reason"] == "completed"

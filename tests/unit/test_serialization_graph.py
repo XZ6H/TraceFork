@@ -10,7 +10,6 @@ build envelopes around invalid traces directly (digests honestly match).
 from datetime import UTC, datetime
 
 import pytest
-
 from tracefork.errors import FixtureCorruptError, FixtureVersionError
 from tracefork.models import Provenance, Span, SpanKind, Trace
 from tracefork.serialization import build_envelope, parse_envelope
@@ -29,7 +28,9 @@ def make_trace(spans: list[Span] | None = None, schema_version: str = "1.0") -> 
     )
 
 
-def span(span_id: str, name: str, kind: SpanKind = SpanKind.TOOL, parent: str | None = None) -> Span:
+def span(
+    span_id: str, name: str, kind: SpanKind = SpanKind.TOOL, parent: str | None = None
+) -> Span:
     return Span(span_id=span_id, parent_span_id=parent, kind=kind, name=name, started_at=T0)
 
 
@@ -57,7 +58,10 @@ def test_missing_parent_rejected_at_load() -> None:
 
 
 def test_cycle_rejected_at_load() -> None:
-    spans = [span("sp_1", "a", SpanKind.AGENT, parent="sp_2"), span("sp_2", "b", SpanKind.LLM, parent="sp_1")]
+    spans = [
+        span("sp_1", "a", SpanKind.AGENT, parent="sp_2"),
+        span("sp_2", "b", SpanKind.LLM, parent="sp_1"),
+    ]
     envelope = build_envelope(make_trace(spans))
     with pytest.raises(FixtureCorruptError, match="cycle"):
         parse_envelope(envelope.to_json_bytes())

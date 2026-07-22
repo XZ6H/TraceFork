@@ -75,7 +75,10 @@ Design constraints:
 - no global registries with hidden mutation; construction is explicit,
 - async-first; treat async as first-class, not an afterthought,
 - never record secrets (API keys, authorization headers),
-- adapter packages depend on core; core never depends on adapters.
+- adapter packages depend on core; core never depends on adapters,
+- **responses must be JSON-safe**: the runtime canonicalizes every response
+  before persisting it; a response containing unsupported objects fails the
+  call with `AdapterError` and nothing is written to the trace.
 
 ## Roadmap
 

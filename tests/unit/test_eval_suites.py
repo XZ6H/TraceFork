@@ -231,3 +231,45 @@ cases:
     result = _run_eval(suite_path)
     assert result.exit_code == 2, result.output
     assert "timed out" in result.output
+
+
+def test_junit_output_escapes_special_characters() -> None:
+    import xml.etree.ElementTree as ET
+
+    from tracefork_cli.suites import CaseResult, SuiteResult, format_junit
+
+    result = SuiteResult(
+        suite="weird<&names>",
+        cases=[CaseResult(name="case<a>&b", status="failed", detail=["expected < 3"])],
+    )
+    xml = format_junit(result)
+    parsed = ET.fromstring(xml)  # must be well-formed XML
+    assert parsed.find("testcase").get("name") == "case<a>&b"
+
+
+def test_exit_precedence_error_over_failed(tmp_path: Path) -> None:
+    """A crashing case (exit 2) takes precedence over a failing one (exit 1)."""
+    fixtures_dir = tmp_path / "fixtures"
+    fixtures_dir.mkdir(exist_ok=True)
+    _make_incident_fixture(fixtures_dir)
+    (tmp_path / "mix_a.py").write_text(AGENT_GOOD, encoding="utf-8")
+    (tmp_path / "mix_b.py").write_text(
+        "async def run(i):\n    raise RuntimeError('x')\n", encoding="utf-8"
+    )
+    suite_path = tmp_path / "suite.yaml"
+    suite_path.write_text(
+        "name: mixed\n"
+        "cases:\n"
+        "  - name: failing\n"
+        "    fixture: fixtures/weather-case.json\n"
+        "    entrypoint: mix_a:run\n"
+        "    expect:\n"
+        "      max:\n"
+        "        tool_calls: 0\n"
+        "  - name: crashing\n"
+        "    fixture: fixtures/weather-case.json\n"
+        "    entrypoint: mix_b:run\n",
+        encoding="utf-8",
+    )
+    result = _run_eval(suite_path)
+    assert result.exit_code == 2, result.output
