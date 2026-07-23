@@ -19,11 +19,12 @@ from typing import Any, Literal
 from tracefork.boundaries.base import boundary_span_kind
 from tracefork.boundaries.registry import BoundaryRegistry
 from tracefork.canonicalization import Canonicalizer
-from tracefork.errors import AdapterError, ReplayError, ReplayMismatchError
+from tracefork.errors import AdapterError, ReplayError, ReplayMismatchError, ReplayRecordedError
 from tracefork.models import (
     BoundaryInvocation,
     ExecutionMode,
     ReplayPolicy,
+    SpanError,
     Trace,
     TraceStatus,
 )
@@ -57,6 +58,7 @@ class ReplayResult:
     unexpected: list[MatchMiss] = field(default_factory=list)
     unused_recordings: list[BoundaryInvocation] = field(default_factory=list)
     live_boundaries: list[str] = field(default_factory=list)
+    mocked: int = 0
     execution_error: BaseException | None = None
 
     @property
@@ -99,6 +101,7 @@ class ReplaySession:
         self._recording_token: Any = None
         self._execution_token: Any = None
         self.matched: list[BoundaryInvocation] = []
+        self.mocked: list[str] = []
         self.unexpected: list[MatchMiss] = []
         self.live_boundaries: list[str] = []
         self._execution_error: BaseException | None = None
@@ -175,14 +178,38 @@ class ReplaySession:
             raise ReplayMismatchError(format_mismatch(outcome))
 
         recorded = outcome.invocation
-        handler = self.registry.handler_for(boundary_type)
-        native_response = handler.restore(recorded.response, dict(recorded.metadata))
-
         recording = self._recording
         assert recording is not None
         span = recording.start_span(
             name, boundary_span_kind(boundary_type), input=canonical_request
         )
+
+        recorded_error = recorded.metadata.get("error")
+        if isinstance(recorded_error, dict) and recorded_error.get("type"):
+            # The recorded interaction failed during the original recording.
+            # Replay reproduces that failure instead of silently returning
+            # None — the candidate matches the recorded run (ADR 0003).
+            error_type = str(recorded_error.get("type", "Error"))
+            error_message = str(recorded_error.get("message", ""))
+            span.attributes["replay"] = "replayed-error"
+            recording.finish_span_with_error(
+                span, SpanError(exception_type=error_type, message=error_message)
+            )
+            recording.record_invocation(
+                recorded.model_copy(
+                    update={
+                        "span_id": span.span_id,
+                        "parent_span_id": parent_span_id,
+                        "parent_name": parent_name,
+                        "metadata": {**recorded.metadata, "replay": "replayed-error"},
+                    }
+                )
+            )
+            self.matched.append(recorded)
+            raise ReplayRecordedError(error_type, error_message)
+
+        handler = self.registry.handler_for(boundary_type)
+        native_response = handler.restore(recorded.response, dict(recorded.metadata))
         span.output = recorded.response
         span.attributes["replay"] = "replayed"
         recording.finish_span(span, None)
@@ -203,6 +230,52 @@ class ReplaySession:
         """Record that a boundary executed live (selective replay, TF-091)."""
         self.live_boundaries.append(f"{boundary_type}.{name}")
 
+    async def mock_invoke(
+        self,
+        boundary_type: str,
+        name: str,
+        request: Any,
+        mock_payload: Any,
+        metadata: dict[str, Any],
+    ) -> Any:
+        """Serve one boundary call from a policy-supplied mock (TF-091).
+
+        The live callable is absent by construction, exactly like REPLAY.
+        """
+        try:
+            canonical_request = self.canonicalizer.canonical_request(request)
+        except TypeError as exc:
+            msg = f"boundary {boundary_type}.{name} request is not canonicalizable: {exc}"
+            raise AdapterError(msg) from exc
+        parent = current_span.get()
+        parent_span_id = parent.span_id if parent is not None else None
+        parent_name = parent.name if parent is not None else None
+
+        recording = self._recording
+        assert recording is not None
+        handler = self.registry.handler_for(boundary_type)
+        span = recording.start_span(
+            name, boundary_span_kind(boundary_type), input=canonical_request
+        )
+        span.output = mock_payload
+        span.attributes["mock"] = True
+        recording.finish_span(span, None)
+        recording.record_invocation(
+            BoundaryInvocation(
+                boundary_type=boundary_type,
+                name=name,
+                request=canonical_request,
+                response=mock_payload,
+                span_id=span.span_id,
+                parent_span_id=parent_span_id,
+                parent_name=parent_name,
+                occurrence=0,
+                metadata={**metadata, "mock": True},
+            )
+        )
+        self.mocked.append(f"{boundary_type}.{name}")
+        return handler.restore(mock_payload, {"mock": True})
+
     def _build_result(self) -> None:
         recording = self._recording
         assert recording is not None
@@ -217,5 +290,6 @@ class ReplaySession:
             unexpected=list(self.unexpected),
             unused_recordings=self._matcher.unused(),
             live_boundaries=list(self.live_boundaries),
+            mocked=len(self.mocked),
             execution_error=self._execution_error,
         )

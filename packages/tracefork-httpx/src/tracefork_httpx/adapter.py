@@ -8,6 +8,7 @@ in v0.1: the boundary runtime is async-first.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import json
 from typing import Any
@@ -15,6 +16,7 @@ from typing import Any
 import httpx
 from tracefork.boundaries import BoundaryRuntime
 from tracefork.boundaries.base import LiveCall
+from tracefork.errors import AdapterError
 from tracefork.models import BoundaryRequest, BoundaryResponse
 
 HTTPX_BOUNDARY_TYPE = "http.httpx"
@@ -83,6 +85,44 @@ class TraceForkAsyncTransport(httpx.AsyncBaseTransport):
 
         response: httpx.Response = await self._runtime.invoke(
             HTTPX_BOUNDARY_TYPE, name, payload, call_live
+        )
+        return response
+
+
+class TraceForkTransport(httpx.BaseTransport):
+    """Sync httpx transport that routes requests through the boundary runtime.
+
+    Each call is executed in a fresh event loop (the sync SDK path cannot
+    await); using it inside a running loop raises ``AdapterError`` — use
+    :class:`TraceForkAsyncTransport` from async code.
+    """
+
+    def __init__(self, inner: httpx.BaseTransport, runtime: BoundaryRuntime) -> None:
+        self._inner = inner
+        self._runtime = runtime
+        runtime.registry.register(HTTPX_BOUNDARY_TYPE, HTTPXHandler())
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            pass
+        else:
+            msg = "sync httpx transport used inside a running event loop; use AsyncClient"
+            raise AdapterError(msg)
+
+        async def call_live() -> httpx.Response:
+            response = self._inner.handle_request(request)
+            response.read()  # buffer now; aread() later is a no-op
+            return response
+
+        response: httpx.Response = asyncio.run(
+            self._runtime.invoke(
+                HTTPX_BOUNDARY_TYPE,
+                f"{request.method} {request.url.path}",
+                _request_payload(request),
+                call_live,
+            )
         )
         return response
 

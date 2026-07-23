@@ -44,14 +44,17 @@ class OpenAIHandler:
                 events = [event.model_dump(mode="json") async for event in stream]
             else:
                 events = [event.model_dump(mode="json") for event in stream]
-            completed = next((e for e in events if e.get("type") == "response.completed"), None)
-            usage = _usage_metadata((completed or {}).get("response", {}).get("usage"))
+            terminal_types = ("response.completed", "response.incomplete")
+            terminal = next((e for e in reversed(events) if e.get("type") in terminal_types), None)
+            usage = _usage_metadata((terminal or {}).get("response", {}).get("usage"))
             return BoundaryResponse(
                 response={"__stream__": True, "events": events},
                 metadata={
                     "stream": True,
                     "usage": usage,
-                    "finish_reason": "completed" if completed else None,
+                    "finish_reason": terminal.get("type").removeprefix("response.")
+                    if terminal
+                    else None,
                     "latency_ms": _latency_ms(started),
                 },
             )
@@ -89,9 +92,6 @@ class _ReplayedStream:
 
     def __iter__(self) -> Iterator[Any]:
         return iter(self._events)
-
-    def __len__(self) -> int:
-        return len(self._events)
 
     def __aiter__(self) -> AsyncIterator[Any]:
         async def _gen() -> AsyncIterator[Any]:

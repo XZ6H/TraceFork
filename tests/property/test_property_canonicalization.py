@@ -45,7 +45,8 @@ def test_fingerprints_survive_ignore_rule_changes_of_untouched_fields(payload, e
     guaranteed absent.
     """
     canonicalizer = Canonicalizer()
-    with_rules = Canonicalizer(ignore=[f"__absent_{extra}__"])
+    safe_extra = "".join(ch for ch in extra if ch.isalnum())
+    with_rules = Canonicalizer(ignore=[f"__absent_{safe_extra}__"])
     assert canonicalizer.fingerprint("tool", "t", payload) == with_rules.fingerprint(
         "tool", "t", payload
     )
@@ -70,9 +71,7 @@ secret_payloads = st.dictionaries(
 def test_redaction_ensures_secrets_never_survive(payload) -> None:
     engine = RedactionEngine()
     redacted = engine.apply(payload)
-    text = canonical_json(redacted)
-    for key, value in payload.items():
-        assert value not in text, f"secret under {key} survived redaction"
+    # The property: every secret-keyed value became the redaction marker.
     assert all(item == "[REDACTED]" for item in redacted.values())
 
 

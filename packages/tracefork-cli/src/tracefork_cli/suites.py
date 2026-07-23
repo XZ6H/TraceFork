@@ -41,10 +41,15 @@ class CaseReplay(BaseModel):
     llm: ReplayMode | None = None
     http: ReplayMode | None = None
     tools: dict[str, ReplayMode] = Field(default_factory=dict)
+    mocks: dict[str, Any] = Field(default_factory=dict)
 
     def to_policy(self) -> ReplayPolicy:
         return ReplayPolicy(
-            default=self.default, llm=self.llm, http=self.http, tools=dict(self.tools)
+            default=self.default,
+            llm=self.llm,
+            http=self.http,
+            tools=dict(self.tools),
+            mocks=dict(self.mocks),
         )
 
 

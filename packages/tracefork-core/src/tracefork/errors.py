@@ -41,6 +41,19 @@ class ReplayPolicyError(ReplayError):
     """Raised when a replay policy is invalid or cannot be resolved."""
 
 
+class ReplayRecordedError(ReplayError):
+    """A recorded boundary interaction failed during the original recording.
+
+    Replay re-raises it so the candidate execution matches the recorded run
+    exactly — the live call is never made and nothing silently becomes None.
+    """
+
+    def __init__(self, error_type: str, error_message: str) -> None:
+        self.recorded_type = error_type
+        self.recorded_message = error_message
+        super().__init__(f"recorded boundary error [{error_type}]: {error_message}")
+
+
 class UnexpectedLiveCallError(ReplayError):
     """Raised when a boundary performs a live call in a mode that forbids it."""
 

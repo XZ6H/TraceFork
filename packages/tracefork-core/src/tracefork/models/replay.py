@@ -37,6 +37,7 @@ class ReplayPolicy(BaseModel):
     http: ReplayMode | None = None
     families: dict[str, ReplayMode] = Field(default_factory=dict)
     tools: dict[str, ReplayMode] = Field(default_factory=dict)
+    mocks: dict[str, Any] = Field(default_factory=dict)
 
     def mode_for(self, boundary_type: str, name: str) -> ReplayMode:
         """Resolve the replay mode for a boundary call.

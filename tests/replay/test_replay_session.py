@@ -16,8 +16,13 @@ import pytest
 from tracefork import record
 from tracefork.boundaries import BoundaryRegistry, BoundaryRuntime, ReplayMode, ReplayPolicy
 from tracefork.canonicalization import Canonicalizer
-from tracefork.errors import ReplayError, ReplayMismatchError, ReplayPolicyError
-from tracefork.models import SpanKind
+from tracefork.errors import (
+    ReplayError,
+    ReplayMismatchError,
+    ReplayPolicyError,
+    ReplayRecordedError,
+)
+from tracefork.models import SpanKind, SpanStatus
 from tracefork.replay import ReplaySession
 from tracefork.serialization import FixtureEnvelope, build_envelope
 
@@ -345,3 +350,42 @@ def _trace_stub() -> Any:
     from tracefork.models import Provenance, Trace
 
     return Trace(trace_id="tr_1", name="case", started_at=T0, provenance=Provenance())
+
+
+async def test_recorded_error_replays_as_replay_recorded_error(
+    echo_registry: BoundaryRegistry,
+) -> None:
+    """A boundary that failed during recording must replay as the recorded
+    failure — not as a silent None (error-replay semantics)."""
+    runtime = BoundaryRuntime(registry=echo_registry)
+
+    async def live() -> Any:
+        raise ValueError("recorded failure")
+
+    with record("error-replay") as rec, pytest.raises(ValueError):
+        await runtime.invoke("tool.echo", "flaky", {"q": 1}, live)
+    fixture = build_envelope(rec.trace, created_at=T0)
+
+    replay_runtime = BoundaryRuntime(registry=echo_registry)
+
+    async def live_must_not_run() -> Any:
+        raise AssertionError("live must never run during replay")
+
+    session = ReplaySession(fixture=fixture, registry=echo_registry)
+    # The exception must ESCAPE the session (as in real usage) so the replay
+    # is marked failed; pytest.raises sits outside the session context.
+    with pytest.raises(ReplayRecordedError) as excinfo, session:
+        await replay_runtime.invoke("tool.echo", "flaky", {"q": 1}, live_must_not_run)
+
+    assert "ValueError" in str(excinfo.value)
+    assert "recorded failure" in str(excinfo.value)
+    result = session.result
+    assert result.matched == 1
+    assert result.status == "failed"  # the replay reproduced the recorded error
+    (candidate_invocation,) = result.trace.invocations
+    assert candidate_invocation.response is None
+    (candidate_span,) = result.trace.spans
+    assert candidate_span.status is SpanStatus.ERROR
+    assert candidate_span.error is not None
+    assert candidate_span.error.exception_type == "ValueError"
+    assert candidate_span.attributes["replay"] == "replayed-error"

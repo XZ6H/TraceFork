@@ -124,6 +124,14 @@ class BoundaryRuntime:
                     dict(metadata or {}),
                     on_live=lambda: session.note_live(boundary_type, name),
                 )
+            if boundary_mode is ReplayMode.MOCK:
+                mock_payload = policy.mocks.get(name)
+                if mock_payload is None:
+                    msg = f"no mock response configured for boundary {boundary_type}.{name!r}"
+                    raise ReplayPolicyError(msg)
+                return await session.mock_invoke(
+                    boundary_type, name, request, mock_payload, dict(metadata or {})
+                )
             msg = f"replay mode {boundary_mode.value!r} is not supported yet"
             raise ReplayPolicyError(msg)
         if context is None or context.recording is None:

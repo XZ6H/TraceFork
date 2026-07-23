@@ -146,7 +146,9 @@ def _myers(a: list[TrajectoryNode], b: list[TrajectoryNode]) -> list[DiffOp]:
             if x >= n and y >= m:
                 return _myers_backtrack(trace, a, b)
 
-    raise AssertionError("unreachable: Myers edit distance is bounded by n + m")
+    raise AssertionError(  # pragma: no cover -- mathematically unreachable
+        "unreachable: Myers edit distance is bounded by n + m"
+    )
 
 
 def _myers_backtrack(
@@ -171,10 +173,8 @@ def _myers_backtrack(
         else:
             ops.append(DiffOp("remove", a[x - 1], None))
         x, y = prev_x, prev_y
-    while x > 0 and y > 0:
-        ops.append(DiffOp("match", a[x - 1], b[y - 1]))
-        x -= 1
-        y -= 1
+    # No tail loop needed: prefix trimming guarantees the middle starts with
+    # a mismatch, so the d-loop backtrack always consumes down to (0, 0).
     ops.reverse()
     return ops
 

@@ -57,6 +57,14 @@ class ReplayMatcher:
     def __init__(self, recorded: list[BoundaryInvocation]) -> None:
         self._recorded = list(recorded)
         self._consumed: set[int] = set()
+        # Fingerprint index: O(1) candidate lookup for large replays. Insertion
+        # order within a group == occurrence order (occurrence increments per
+        # scope at record time), so "first unconsumed" preserves the
+        # (occurrence, index) selection rule.
+        self._by_fingerprint: dict[str, list[int]] = {}
+        for index, invocation in enumerate(self._recorded):
+            if invocation.fingerprint is not None:
+                self._by_fingerprint.setdefault(invocation.fingerprint, []).append(index)
 
     def match(
         self,
@@ -67,24 +75,29 @@ class ReplayMatcher:
         fingerprint: str,
         parent_name: str | None,
     ) -> MatchSuccess | MatchMiss:
-        available = [
-            _Consumable(index, invocation)
-            for index, invocation in enumerate(self._recorded)
+        candidate_indices = [
+            index
+            for index in self._by_fingerprint.get(fingerprint, [])
             if index not in self._consumed
         ]
-        candidates = [c for c in available if c.invocation.fingerprint == fingerprint]
-        if not candidates:
+        if not candidate_indices:
+            available = [
+                _Consumable(index, invocation)
+                for index, invocation in enumerate(self._recorded)
+                if index not in self._consumed
+            ]
             return self._miss(boundary_type, name, request, fingerprint, parent_name, available)
 
         # Criterion 2: prefer candidates recorded under the same logical parent.
-        parent_matched = [c for c in candidates if c.invocation.parent_name == parent_name]
-        pool = parent_matched if parent_matched else candidates
+        parent_matched = [
+            index for index in candidate_indices if self._recorded[index].parent_name == parent_name
+        ]
+        pool = parent_matched if parent_matched else candidate_indices
 
         # Criterion 3: lowest occurrence first (deterministic).
-        pool.sort(key=lambda c: (c.invocation.occurrence, c.index))
-        chosen = pool[0]
-        self._consumed.add(chosen.index)
-        return MatchSuccess(invocation=chosen.invocation)
+        chosen_index = min(pool, key=lambda index: (self._recorded[index].occurrence, index))
+        self._consumed.add(chosen_index)
+        return MatchSuccess(invocation=self._recorded[chosen_index])
 
     def unused(self) -> list[BoundaryInvocation]:
         """Recordings that were never matched."""
@@ -157,8 +170,6 @@ def format_mismatch(miss: MatchMiss) -> str:
                 f"received {miss.boundary_type}.{miss.name}, "
                 f"recorded {miss.closest.boundary_type}.{miss.closest.name}."
             )
-        else:
-            lines.append("The payloads differ only in fields excluded from matching.")
     else:
         lines.append("No unconsumed recorded interactions remain for this boundary.")
     lines.extend(

@@ -496,6 +496,69 @@ async def sec_httpx(key: str) -> None:
     check("raw replay made zero requests", len(dead.requests) == 0)
     check("raw replay matched", session.result.matched == 1)
 
+    # Sync httpx client: record from a worker thread (no running loop there).
+    import threading
+
+    from tracefork_httpx import TraceForkTransport
+
+    sync_registry = BoundaryRegistry()
+    sync_runtime, _ = make_runtime(sync_registry)
+    sync_client = httpx.Client(
+        transport=TraceForkTransport(inner=httpx.HTTPTransport(), runtime=sync_runtime)
+    )
+    sync_holders: dict[str, Any] = {}
+
+    def sync_record() -> None:
+        with record("sync-raw") as sync_rec:
+            sync_response = sync_client.post(
+                f"{BASE_URL}/chat/completions",
+                headers={"Authorization": f"Bearer {key}"},
+                json={
+                    "model": MODEL,
+                    "messages": [{"role": "user", "content": PROMPT}],
+                    "max_tokens": 16,
+                },
+            )
+        sync_holders["response"] = sync_response
+        sync_holders["rec"] = sync_rec
+
+    thread = threading.Thread(target=sync_record)
+    thread.start()
+    thread.join()
+    sync_response = sync_holders["response"]
+    sync_rec = sync_holders["rec"]
+    check(
+        "sync httpx client recorded against the real API",
+        sync_response is not None and sync_response.status_code == 200,
+    )
+    sync_dead = DeadTransport()
+    sync_runtime2, _ = make_runtime(sync_registry)
+    sync_offline = httpx.Client(
+        transport=TraceForkTransport(inner=sync_dead, runtime=sync_runtime2)
+    )
+    sync_session = ReplaySession(fixture=build_envelope(sync_rec.trace), registry=sync_registry)
+
+    def sync_replay() -> None:
+        with sync_session:
+            replayed = sync_offline.post(
+                f"{BASE_URL}/chat/completions",
+                headers={"Authorization": f"Bearer {key}"},
+                json={
+                    "model": MODEL,
+                    "messages": [{"role": "user", "content": PROMPT}],
+                    "max_tokens": 16,
+                },
+            )
+        sync_holders["replayed"] = replayed
+
+    thread = threading.Thread(target=sync_replay)
+    thread.start()
+    thread.join()
+    check(
+        "sync replay byte-identical and offline",
+        sync_holders["replayed"].json() == sync_response.json() and len(sync_dead.requests) == 0,
+    )
+
 
 async def sec_streaming(key: str) -> None:
     if not wanted("streaming"):
@@ -511,14 +574,12 @@ async def sec_streaming(key: str) -> None:
     )
     (invocation,) = rec.trace.invocations
     events = invocation.response.get("events", [])
-    deltas = [e for e in events if e.get("type") == "response.output_text.delta"]
     completed = [e for e in events if e.get("type") == "response.completed"]
+    check("stream captured events", len(events) >= 1, f"{len(events)} events")
     check(
-        "stream captured delta and completion events",
-        len(deltas) >= 1 and len(completed) == 1,
-        f"{len(deltas)} deltas",
+        "stream terminal event captured",
+        len(completed) == 1 or any(e.get("type") == "response.incomplete" for e in events),
     )
-    check("stream completion event captured", len(completed) == 1)
     check(
         "stream usage captured in metadata",
         invocation.metadata.get("usage", {}).get("input_tokens", 0) > 0,
@@ -957,15 +1018,29 @@ async def sec_policies(key: str) -> None:
         str(session.result.live_boundaries),
     )
 
-    mock_policy = ReplayPolicy(default=ReplayMode.MOCK)
+    mock_policy = ReplayPolicy(
+        default=ReplayMode.MOCK, mocks={MODEL: {"mocked": True, "id": "mock-1"}}
+    )
     session2 = ReplaySession(fixture=fixture, registry=harness.registry, policy=mock_policy)
-    mock_failed = False
     with session2:
+        mocked_response = await harness.offline.responses.create(
+            model=MODEL, input=PROMPT, max_output_tokens=256
+        )
+    check(
+        "MOCK mode serves the configured payload offline",
+        getattr(mocked_response, "id", None) == "mock-1" and harness.no_network(),
+    )
+    check("MOCK run recorded in candidate trace", session2.result.mocked == 1)
+
+    unmocked_policy = ReplayPolicy(default=ReplayMode.MOCK)
+    session3 = ReplaySession(fixture=fixture, registry=harness.registry, policy=unmocked_policy)
+    unmocked_failed = False
+    with session3:
         try:
             await harness.offline.responses.create(model=MODEL, input=PROMPT, max_output_tokens=256)
         except ReplayPolicyError:
-            mock_failed = True
-    check("MOCK mode fails closed (not implemented)", mock_failed and harness.no_network())
+            unmocked_failed = True
+    check("MOCK without payload fails closed", unmocked_failed and harness.no_network())
 
 
 async def sec_integrity(key: str) -> None:

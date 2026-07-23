@@ -102,6 +102,12 @@ class Recording:
         # Exception type and message only: stack traces carry local paths.
         span.error = SpanError(exception_type=type(error).__qualname__, message=str(error))
 
+    def finish_span_with_error(self, span: Span, span_error: SpanError) -> None:
+        """Close a span as failed with a pre-built error (replay path)."""
+        self.finish_span(span, None)
+        span.status = SpanStatus.ERROR
+        span.error = span_error
+
     def record_invocation(self, invocation: Any) -> None:
         """Redact and persist one boundary invocation (TF-172).
 

@@ -124,3 +124,22 @@ def test_metrics_cost_is_null_without_calculator_or_unknown_model() -> None:
     )
     metrics = extract_metrics(trace, cost_calculator=TableCostCalculator({"gpt-test": (1.0, 2.0)}))
     assert metrics.estimated_cost_usd is None
+
+
+def test_metrics_counts_error_spans() -> None:
+    from tracefork.models import SpanError, SpanStatus
+
+    spans = [
+        make_span(SpanKind.TOOL, "ok_tool", 0.0, 0.5),
+        make_span(SpanKind.TOOL, "bad_tool", 0.5, 1.0),
+    ]
+    spans[1].status = SpanStatus.ERROR
+    spans[1].error = SpanError(exception_type="ValueError", message="x")
+    trace = make_trace([], spans=spans)
+    metrics = extract_metrics(trace)
+    assert metrics.error_spans == 1
+
+
+def test_metrics_error_spans_zero_when_clean() -> None:
+    trace = make_trace([], spans=[make_span(SpanKind.TOOL, "ok", 0.0, 0.5)])
+    assert extract_metrics(trace).error_spans == 0

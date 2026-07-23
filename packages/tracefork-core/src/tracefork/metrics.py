@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-from tracefork.models import SpanKind, Trace
+from tracefork.models import SpanKind, SpanStatus, Trace
 
 
 class CostCalculator(Protocol):
@@ -54,6 +54,7 @@ class TraceMetrics:
     wall_clock_seconds: float | None = None
     llm_latency_ms: int | None = None
     tool_latency_ms: int | None = None
+    error_spans: int = 0
 
 
 def extract_metrics(trace: Trace, *, cost_calculator: CostCalculator | None = None) -> TraceMetrics:
@@ -87,6 +88,8 @@ def extract_metrics(trace: Trace, *, cost_calculator: CostCalculator | None = No
         elif family == "http":
             http_calls += 1
 
+    error_spans = sum(1 for span in trace.spans if span.status is SpanStatus.ERROR)
+
     return TraceMetrics(
         llm_calls=llm_calls,
         tool_calls=tool_calls,
@@ -98,6 +101,7 @@ def extract_metrics(trace: Trace, *, cost_calculator: CostCalculator | None = No
         wall_clock_seconds=_wall_clock_seconds(trace),
         llm_latency_ms=_sum_latency(trace, SpanKind.LLM),
         tool_latency_ms=_sum_latency(trace, SpanKind.TOOL),
+        error_spans=error_spans,
     )
 
 
