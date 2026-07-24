@@ -1,5 +1,8 @@
 # Contributing to TraceFork
 
+AI coding agents: start with [AGENTS.md](AGENTS.md) — it is the authoritative
+agent instruction file for this repository.
+
 Thanks for your interest in contributing. TraceFork optimizes for depth,
 correctness and documentation rather than feature count — please keep that in
 mind when proposing changes.

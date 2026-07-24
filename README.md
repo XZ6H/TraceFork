@@ -115,6 +115,10 @@ attribution (plan v0.2+).
 
 Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 
+AI coding agents: read [AGENTS.md](AGENTS.md) before making changes — it pins
+the architectural invariants, quality gates and TDD workflow this repo
+expects. Project skills live in `.zcode/skills/`.
+
 ```console
 uv sync
 uv run pytest
