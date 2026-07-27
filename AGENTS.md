@@ -83,6 +83,21 @@ Tests live in `tests/` by risk category: `unit/`, `concurrency/`, `replay/`
 (invariants), `integration/`, `property/` (Hypothesis), `performance/` —
 the full matrix is in [docs/testing.md](docs/testing.md).
 
+## Where does X go?
+
+| I want to... | Location | Also update |
+|---|---|---|
+| Add an adapter / provider | adapter package, see [docs/adapters.md](docs/adapters.md) + `add-adapter` skill | docs/adapters.md row |
+| Add a CLI command or option | `packages/tracefork-cli/src/tracefork_cli/commands/`, register in `main.py` | [docs/cli.md](docs/cli.md) |
+| Add an assertion type | `core/assertions.py` (`TraceExpectations` + evaluator) | `docs/failure-model.md` if it fails |
+| Add a metric | `core/metrics.py` (`TraceMetrics` + `extract_metrics`) | test with real-shape usage metadata |
+| Add an error type | `core/errors.py` hierarchy | [docs/failure-model.md](docs/failure-model.md) tree + remedies |
+| Add a storage backend | `core/storage/` behind the `FixtureStore` protocol | reuse `validate_fixture_name` |
+| Add a replay-mode branch | `core/boundaries/runtime.py` MOCK/FAULT pattern, `session.py` | fail-closed test + [docs/replay-semantics.md](docs/replay-semantics.md) |
+| Change the fixture schema | [adr/0002](adr/0002-versioned-trace-schema.md) rules | [docs/trace-schema.md](docs/trace-schema.md) |
+| Add a docs page | `docs/` | this table + `docs/README.md` index |
+| Pick up a task | [docs/roadmap.md](docs/roadmap.md) | invariants above still apply |
+
 ## Recipes
 
 ### Add a new adapter

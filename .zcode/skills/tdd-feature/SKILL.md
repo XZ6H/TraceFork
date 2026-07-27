@@ -30,3 +30,29 @@ Notes:
   (parallel gather, cancellation, isolation) — not a single happy path.
 - If a test reveals a bug in an existing invariant, stop and fix the
   invariant first; the feature waits.
+
+## Worked example (real): `TraceMetrics.error_spans`
+
+1. **Red** — append to `tests/unit/test_metrics.py`:
+
+   ```python
+   def test_metrics_counts_error_spans() -> None:
+       spans = [make_span(SpanKind.TOOL, "ok", 0.0, 0.5),
+                make_span(SpanKind.TOOL, "bad", 0.5, 1.0)]
+       spans[1].status = SpanStatus.ERROR
+       spans[1].error = SpanError(exception_type="ValueError", message="x")
+       assert extract_metrics(make_trace([], spans=spans)).error_spans == 1
+   ```
+
+   Run it: fails with `AttributeError`/missing field — the right reason.
+
+2. **Green** — add `error_spans: int = 0` to `TraceMetrics`, count
+   `span.status is SpanStatus.ERROR` in `extract_metrics`.
+
+3. **Gates** — pytest, ruff, mypy; the new field is covered by the new test.
+
+4. **Commit** — `feat(core): count error spans in trace metrics`.
+
+The same shape applies at every scale; larger features just repeat the
+loop per test batch (see the error-replay change: exception type ->
+session branch -> candidate-span semantics -> docs, one commit).
