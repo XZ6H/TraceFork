@@ -54,15 +54,26 @@ TraceFork records the complete execution as an immutable, Git-friendly fixture: 
 
 ## Installation
 
-The packages are not on PyPI yet (planned for the next release). Install from source:
+```console
+pip install tracefork-agent
+```
+
+Optional extras for the adapters:
+
+```console
+pip install tracefork-agent[openai]   # OpenAI adapter
+pip install tracefork-agent[httpx]    # httpx transport
+```
+
+Requires Python 3.12+. Works with any OpenAI-compatible API (OpenAI, OpenRouter, vLLM, llama.cpp server, and others).
+
+To develop from source:
 
 ```console
 git clone https://github.com/XZ6H/TraceFork
 cd TraceFork
 uv sync
 ```
-
-Requires Python 3.12+. Works with any OpenAI-compatible API (OpenAI, OpenRouter, vLLM, llama.cpp server, and others).
 
 ## Quickstart
 
