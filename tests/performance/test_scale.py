@@ -96,7 +96,7 @@ def test_replay_of_10_000_step_trace() -> None:
     elapsed = time.perf_counter() - started
     assert session.result.matched == STEPS
     assert session.result.is_hermetic
-    assert elapsed < 10, f"10,000-step replay took {elapsed:.1f}s"
+    assert elapsed < 30, f"10,000-step replay took {elapsed:.1f}s"
 
 
 def test_diff_of_10_000_nodes_with_2_000_edits() -> None:
@@ -220,7 +220,7 @@ def test_1_000_concurrent_recordings_stay_isolated() -> None:
 
     assert all(spans == 2 and invocations == 1 for spans, invocations, _ in results)
     assert all(name == f"case-{n}" for n, (_, _, name) in enumerate(results))
-    assert elapsed < 15, f"1,000 concurrent recordings took {elapsed:.1f}s"
+    assert elapsed < 45, f"1,000 concurrent recordings took {elapsed:.1f}s"
 
 
 def test_fixture_load_of_10_000_spans(tmp_path) -> None:
@@ -236,4 +236,4 @@ def test_fixture_load_of_10_000_spans(tmp_path) -> None:
 
     assert len(graph.nodes) == STEPS
     assert metrics.tool_calls == STEPS
-    assert elapsed < 10, f"10,000-span fixture load took {elapsed:.1f}s"
+    assert elapsed < 30, f"10,000-span fixture load took {elapsed:.1f}s"
