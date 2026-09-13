@@ -1,0 +1,56 @@
+site_name: TraceFork
+site_description: Replay AI agent failures locally and turn them into regression tests.
+site_url: https://xzh6.github.io/TraceFork/
+repo_url: https://github.com/XZ6H/TraceFork
+repo_name: XZ6H/TraceFork
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: switch to light mode
+  features:
+    - content.code.copy
+    - navigation.sections
+    - navigation.top
+
+nav:
+  - Home: index.md
+  - Concepts: concepts.md
+  - Architecture: architecture.md
+  - Trace schema: trace-schema.md
+  - Matching: matching.md
+  - Replay semantics: replay-semantics.md
+  - Failure model: failure-model.md
+  - Adapters: adapters.md
+  - Trajectory diff: trajectory-diff.md
+  - Security: security.md
+  - Testing: testing.md
+  - CLI: cli.md
+  - Roadmap: roadmap.md
+  - CI example: examples/github-actions.md
+  - Decision records:
+      - 0001 - Monorepo: adr/0001-monorepo.md
+      - 0002 - Versioned trace schema: adr/0002-versioned-trace-schema.md
+      - 0003 - Fail-closed replay: adr/0003-fail-closed-replay.md
+      - 0004 - Boundary abstraction: adr/0004-boundary-abstraction.md
+      - 0005 - Execution graph: adr/0005-execution-graph.md
+
+exclude_docs: |
+  README.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - toc:
+      permalink: true

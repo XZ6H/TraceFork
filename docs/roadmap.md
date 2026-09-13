@@ -3,7 +3,7 @@
 The ordered backlog after v0.1, distilled from the implementation plan
 (§39–§43). Each item is scoped enough for an agent (or human) to pick up:
 the "done" line is the acceptance boundary. New work should fit the
-invariants in [AGENTS.md](../AGENTS.md) — anything that bends one needs an
+invariants in [AGENTS.md](https://github.com/XZ6H/TraceFork/blob/main/AGENTS.md) — anything that bends one needs an
 ADR and a human decision first.
 
 ## v0.2 — fork replay + fault injection
@@ -81,7 +81,7 @@ YAML and enforced with evidence.
 
 ## Ground rules for any of the above
 
-1. TDD per [AGENTS.md](../AGENTS.md) — failing test first, 100% coverage
+1. TDD per [AGENTS.md](https://github.com/XZ6H/TraceFork/blob/main/AGENTS.md) — failing test first, 100% coverage
    maintained, gates green.
 2. Core stays framework-independent; new external I/O goes through the
    boundary abstraction ([adapters.md](adapters.md)).

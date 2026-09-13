@@ -19,6 +19,7 @@ htmlcov/
 
 # TraceFork local state
 .tracefork/
+site/
 
 # Editors
 .idea/

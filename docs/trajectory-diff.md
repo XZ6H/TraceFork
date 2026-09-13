@@ -57,7 +57,7 @@ Resources
 ```
 
 The `diff` command is informational; pass/fail verdicts belong to
-[evaluation suites](#evaluation-suites) (see the CLI `eval` command and
+the evaluation suites (see the CLI `eval` command and
 `docs/replay-semantics.md`), which combine diffs' underlying metrics with
 declarative expectations and regression thresholds.
 

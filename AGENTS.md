@@ -11,7 +11,7 @@ failures can be reproduced locally and turned into deterministic regression
 tests. Python 3.12+, uv workspace monorepo.
 
 Read in this order: [README.md](README.md) → [docs/concepts.md](docs/concepts.md) →
-[docs/architecture.md](docs/architecture.md) → [adr/](adr/).
+[docs/architecture.md](docs/architecture.md) → [adr/](docs/adr/).
 
 ## Non-negotiable invariants
 
@@ -94,7 +94,7 @@ the full matrix is in [docs/testing.md](docs/testing.md).
 | Add an error type | `core/errors.py` hierarchy | [docs/failure-model.md](docs/failure-model.md) tree + remedies |
 | Add a storage backend | `core/storage/` behind the `FixtureStore` protocol | reuse `validate_fixture_name` |
 | Add a replay-mode branch | `core/boundaries/runtime.py` MOCK/FAULT pattern, `session.py` | fail-closed test + [docs/replay-semantics.md](docs/replay-semantics.md) |
-| Change the fixture schema | [adr/0002](adr/0002-versioned-trace-schema.md) rules | [docs/trace-schema.md](docs/trace-schema.md) |
+| Change the fixture schema | [adr/0002](docs/adr/0002-versioned-trace-schema.md) rules | [docs/trace-schema.md](docs/trace-schema.md) |
 | Add a docs page | `docs/` | this table + `docs/README.md` index |
 | Pick up a task | [docs/roadmap.md](docs/roadmap.md) | invariants above still apply |
 
@@ -114,7 +114,7 @@ causes/remedies table in [docs/failure-model.md](docs/failure-model.md).
 
 ### Change the trace schema
 
-Read [adr/0002-versioned-trace-schema.md](adr/0002-versioned-trace-schema.md)
+Read [adr/0002-versioned-trace-schema.md](docs/adr/0002-versioned-trace-schema.md)
 first. Append-only within `1.0`; bump and migrate otherwise.
 
 ### Validate against a real provider

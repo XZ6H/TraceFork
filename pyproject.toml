@@ -21,6 +21,7 @@ dependencies = []
 # Shippable code lives in packages/* and is added per milestone.
 
 [dependency-groups]
+docs = ["mkdocs-material>=9.5"]
 dev = [
     "tracefork-core",
     "tracefork-openai",

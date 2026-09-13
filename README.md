@@ -107,7 +107,7 @@ attribution (plan v0.2+).
 
 - [docs/](docs/) — concepts, architecture, replay semantics, matching, failure model,
   adapter contract, trajectory diff, security
-- [adr/](adr/) — architectural decision records
+- [adr/](docs/adr/) — architectural decision records
 - [examples/support-agent](examples/support-agent) — end-to-end incident demo
 - [CHANGELOG.md](CHANGELOG.md)
 

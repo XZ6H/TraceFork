@@ -30,5 +30,5 @@ Of particular interest:
 
 TraceFork fails closed on replay mismatches, redacts known secret headers and
 keys before persistence, and verifies fixture integrity via SHA-256 digests.
-These are documented in [adr/0003-fail-closed-replay.md](adr/0003-fail-closed-replay.md)
+These are documented in [adr/0003-fail-closed-replay.md](docs/adr/0003-fail-closed-replay.md)
 and will be documented in `docs/security.md`.

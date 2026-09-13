@@ -1,7 +1,7 @@
 # Trace and Fixture Schema
 
 Version 1.0 of the trace schema, and version 1 of the fixture envelope (see
-[ADR 0002](../adr/0002-versioned-trace-schema.md)). Both are validated
+[ADR 0002](adr/0002-versioned-trace-schema.md)). Both are validated
 strictly on load: unknown versions are rejected, unknown fields are rejected,
 and the integrity digest must match.
 

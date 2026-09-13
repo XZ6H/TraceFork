@@ -58,7 +58,7 @@ hand-edit fixture files; re-record instead.
 ## Fail-closed replay
 
 Security-relevant by construction: an unmatched replay call is an error, not
-a live call. See [ADR 0003](../adr/0003-fail-closed-replay.md) and
+a live call. See [ADR 0003](adr/0003-fail-closed-replay.md) and
 [failure-model.md](failure-model.md).
 
 ## Known limitations (v0.1)

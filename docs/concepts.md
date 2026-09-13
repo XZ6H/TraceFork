@@ -15,7 +15,7 @@ recorded during the run.
 One execution unit inside a trace: an agent step, an LLM call, a tool call,
 an HTTP request, a retriever, a workflow, or a custom unit. Spans link to
 their parent via `parent_span_id`, forming the execution tree from which the
-logical graph is derived (see [ADR 0005](../adr/0005-execution-graph.md)).
+logical graph is derived (see [ADR 0005](adr/0005-execution-graph.md)).
 Sibling order is start order, never completion order.
 
 ## Boundary
@@ -23,7 +23,7 @@ Sibling order is start order, never completion order.
 A nondeterministic edge between the agent and the outside world: an LLM call,
 a tool invocation, an HTTP request. All boundary traffic is routed through a
 single runtime which decides — per call — whether it executes live or is
-served from a recording (see [ADR 0004](../adr/0004-boundary-abstraction.md)).
+served from a recording (see [ADR 0004](adr/0004-boundary-abstraction.md)).
 
 ## Boundary invocation
 
@@ -66,7 +66,7 @@ The boundary runtime operates in one of three modes:
 | `FAULT` | Injected failure. Not implemented yet (fails closed). |
 
 Modes are always explicit — there is no implicit fallback to live (see
-[ADR 0003](../adr/0003-fail-closed-replay.md)).
+[ADR 0003](adr/0003-fail-closed-replay.md)).
 
 ## Hermetic, hybrid, live
 

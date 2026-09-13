@@ -140,4 +140,4 @@ cases:
 ```
 
 See [testing.md](testing.md) for how all of this is tested, and
-[../examples/support-agent](../examples/support-agent) for a full walkthrough.
+[../examples/support-agent](https://github.com/XZ6H/TraceFork/tree/main/examples/support-agent) for a full walkthrough.

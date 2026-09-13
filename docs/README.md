@@ -19,5 +19,5 @@ describe.
 | [testing.md](testing.md) | Test plan and coverage matrix |
 | [roadmap.md](roadmap.md) | Ordered backlog after v0.1 with done-criteria |
 
-Architecture decisions are in [adr/](../adr/); the end-to-end demo lives in
-[examples/support-agent](../examples/support-agent).
+Architecture decisions are in [adr/](adr/); the end-to-end demo lives in
+[examples/support-agent](https://github.com/XZ6H/TraceFork/tree/main/examples/support-agent).
