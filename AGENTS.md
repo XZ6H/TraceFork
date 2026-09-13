@@ -20,7 +20,7 @@ would violate one requires an explicit human decision and a new ADR — do not
 "just implement it".
 
 1. **Framework independence.** `tracefork-core` never imports an agent
-   framework. Framework code lives in adapter packages only.
+   framework. Framework code lives in adapter modules or optional dependencies only.
 2. **Fail-closed replay.** An unmatched replayed call raises
    `ReplayMismatchError`. No code path turns a replayed call into a live
    call — `ReplaySession.replay_invoke` does not even accept a live callable.
@@ -74,10 +74,7 @@ proving the line is unreachable.
 
 | Package | Contents |
 |---|---|
-| `packages/tracefork-core` | Engine: models, recording, boundaries, canonicalization, replay, metrics, diff, assertions, redaction, storage |
-| `packages/tracefork-cli` | Typer CLI (`init/record/inspect/replay/diff/eval`) + eval suites |
-| `packages/tracefork-openai` | OpenAI Responses API adapter (sync/async/streaming) |
-| `packages/tracefork-httpx` | httpx transport adapter (async + sync) |
+| `packages/tracefork-core` | Single package: engine (models, recording, boundaries, replay, diff, assertions, redaction, storage), CLI, and adapters (Python tools, OpenAI, httpx) |
 
 Tests live in `tests/` by risk category: `unit/`, `concurrency/`, `replay/`
 (invariants), `integration/`, `property/` (Hypothesis), `performance/` —
@@ -88,7 +85,7 @@ the full matrix is in [docs/testing.md](docs/testing.md).
 | I want to... | Location | Also update |
 |---|---|---|
 | Add an adapter / provider | adapter package, see [docs/adapters.md](docs/adapters.md) + `add-adapter` skill | docs/adapters.md row |
-| Add a CLI command or option | `packages/tracefork-cli/src/tracefork_cli/commands/`, register in `main.py` | [docs/cli.md](docs/cli.md) |
+| Add a CLI command or option | `packages/tracefork-core/src/tracefork/cli/commands/`, register in `main.py` | [docs/cli.md](docs/cli.md) |
 | Add an assertion type | `core/assertions.py` (`TraceExpectations` + evaluator) | `docs/failure-model.md` if it fails |
 | Add a metric | `core/metrics.py` (`TraceMetrics` + `extract_metrics`) | test with real-shape usage metadata |
 | Add an error type | `core/errors.py` hierarchy | [docs/failure-model.md](docs/failure-model.md) tree + remedies |
