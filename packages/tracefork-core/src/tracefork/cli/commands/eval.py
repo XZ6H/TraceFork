@@ -5,8 +5,8 @@ from pathlib import Path
 import pydantic
 import typer
 import yaml
-from tracefork_cli.output.console import console, error_console
-from tracefork_cli.suites import format_json, format_junit, format_text, run_suite
+from tracefork.cli.output.console import console, error_console
+from tracefork.cli.suites import format_json, format_junit, format_text, run_suite
 
 _FORMATS = {"text": format_text, "json": format_json, "junit": format_junit}
 

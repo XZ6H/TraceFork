@@ -6,11 +6,11 @@ Exit codes: 0 success, 1 regression/mismatch, 2 execution error,
 
 from typing import Any
 
-import tracefork
 import typer
 
-from tracefork_cli.commands import diff, eval, init, inspect, record, replay
-from tracefork_cli.output.console import error_console
+import tracefork
+from tracefork.cli.commands import diff, eval, init, inspect, record, replay
+from tracefork.cli.output.console import error_console
 
 app = typer.Typer(
     name="tracefork",

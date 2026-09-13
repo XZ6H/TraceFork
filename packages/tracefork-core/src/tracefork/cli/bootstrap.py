@@ -17,7 +17,7 @@ from tracefork.storage import FilesystemFixtureStore
 
 def main() -> int:
     if len(sys.argv) < 2:
-        print("usage: python -m tracefork_cli.bootstrap SCRIPT [ARGS...]", file=sys.stderr)
+        print("usage: python -m tracefork.cli.bootstrap SCRIPT [ARGS...]", file=sys.stderr)
         return 3
     script, script_args = sys.argv[1], sys.argv[2:]
     sys.argv = [script, *script_args]

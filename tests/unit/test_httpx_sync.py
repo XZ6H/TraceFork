@@ -5,11 +5,11 @@ from typing import Any
 import httpx
 import pytest
 from tracefork import record
+from tracefork.adapters.httpx import TraceForkTransport
 from tracefork.boundaries import BoundaryRegistry, BoundaryRuntime
 from tracefork.errors import AdapterError
 from tracefork.replay import ReplaySession
 from tracefork.serialization import build_envelope
-from tracefork_httpx import TraceForkTransport
 
 JSON_PAYLOAD: dict[str, Any] = {"orders": [{"id": 1}]}
 

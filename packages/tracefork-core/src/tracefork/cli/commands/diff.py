@@ -3,10 +3,10 @@
 from pathlib import Path
 
 import typer
+from tracefork.cli.output.console import console, error_console
 from tracefork.diff import diff_traces
 from tracefork.errors import FixtureError
 from tracefork.serialization import parse_envelope
-from tracefork_cli.output.console import console, error_console
 
 
 def diff(

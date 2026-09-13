@@ -18,6 +18,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from tracefork import record, span
+from tracefork.adapters.openai import OpenAIHandler
 from tracefork.boundaries import BoundaryRegistry, BoundaryRuntime
 from tracefork.canonicalization import Canonicalizer
 from tracefork.diff import diff_traces
@@ -27,7 +28,6 @@ from tracefork.replay import ReplaySession
 from tracefork.serialization import build_envelope
 from tracefork.storage import FilesystemFixtureStore
 from tracefork.trajectory import build_graph
-from tracefork_openai import OpenAIHandler
 
 from tests.conftest import EchoHandler
 

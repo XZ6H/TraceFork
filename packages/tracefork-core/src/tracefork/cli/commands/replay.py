@@ -9,10 +9,10 @@ from typing import Any
 import typer
 from tracefork.bootstrap import registry as bootstrap_registry
 from tracefork.boundaries import ReplayMode, ReplayPolicy
+from tracefork.cli.output.console import console, error_console
 from tracefork.errors import FixtureError, ReplayError
 from tracefork.replay import ReplaySession
 from tracefork.serialization import FixtureEnvelope, parse_envelope
-from tracefork_cli.output.console import console, error_console
 
 _LIVE_TARGETS = {"llm": "llm", "http": "http", "tools": "tool"}
 

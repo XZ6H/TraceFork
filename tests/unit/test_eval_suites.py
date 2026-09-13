@@ -8,9 +8,9 @@ import pytest
 from tracefork import record
 from tracefork.adapters import ToolBox
 from tracefork.boundaries import BoundaryRegistry, BoundaryRuntime
+from tracefork.cli.main import app
 from tracefork.serialization import build_envelope
 from tracefork.storage import FilesystemFixtureStore
-from tracefork_cli.main import app
 from typer.testing import CliRunner
 
 runner = CliRunner()
@@ -236,7 +236,7 @@ cases:
 def test_junit_output_escapes_special_characters() -> None:
     import xml.etree.ElementTree as ET
 
-    from tracefork_cli.suites import CaseResult, SuiteResult, format_junit
+    from tracefork.cli.suites import CaseResult, SuiteResult, format_junit
 
     result = SuiteResult(
         suite="weird<&names>",

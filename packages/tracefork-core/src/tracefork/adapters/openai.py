@@ -24,6 +24,7 @@ from openai import AsyncOpenAI, OpenAI
 from openai._models import construct_type
 from openai.types.responses import Response
 from openai.types.responses.response_stream_event import ResponseStreamEvent
+
 from tracefork.adapters import canonicalize_argument
 from tracefork.boundaries import BoundaryRuntime
 from tracefork.boundaries.base import LiveCall

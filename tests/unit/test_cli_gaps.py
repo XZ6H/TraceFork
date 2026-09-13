@@ -7,10 +7,10 @@ from typing import Any
 import pytest
 from tracefork import ToolBox, record
 from tracefork.boundaries import BoundaryRegistry, BoundaryRuntime
+from tracefork.cli.main import app
 from tracefork.models import BoundaryInvocation, Provenance, Trace
 from tracefork.serialization import FixtureEnvelope, build_envelope
 from tracefork.storage import FilesystemFixtureStore
-from tracefork_cli.main import app
 from typer.testing import CliRunner
 
 from tests.unit.test_coverage_edges import T0, make_fixture
@@ -71,7 +71,7 @@ def test_cli_diff_prints_removals(tmp_path) -> None:
 
 
 def test_cli_eval_invalid_format_exits_3(tmp_path) -> None:
-    from tracefork_cli.main import app
+    from tracefork.cli.main import app
 
     suite = tmp_path / "suite.yaml"
     suite.write_text("name: s\ncases: []\n", encoding="utf-8")
@@ -132,7 +132,7 @@ def test_cli_replay_execution_error_exits_2(tmp_path) -> None:
 
 
 def test_cli_version_flag() -> None:
-    from tracefork_cli.main import app
+    from tracefork.cli.main import app
 
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
@@ -140,7 +140,7 @@ def test_cli_version_flag() -> None:
 
 
 def test_main_entrypoint_executes(monkeypatch) -> None:
-    from tracefork_cli.main import main as cli_main
+    from tracefork.cli.main import main as cli_main
 
     monkeypatch.setattr(sys, "argv", ["tracefork", "--version"])
     with pytest.raises(SystemExit) as excinfo:
@@ -149,7 +149,7 @@ def test_main_entrypoint_executes(monkeypatch) -> None:
 
 
 def test_suite_replay_mismatch_reported(tmp_path) -> None:
-    from tracefork_cli.suites import run_suite
+    from tracefork.cli.suites import run_suite
 
     fixtures_dir = tmp_path / "fixtures"
     fixtures_dir.mkdir(exist_ok=True)
@@ -197,7 +197,7 @@ def test_suite_replay_mismatch_reported(tmp_path) -> None:
 
 
 def test_suite_replay_mock_serves_from_policy(tmp_path) -> None:
-    from tracefork_cli.suites import run_suite
+    from tracefork.cli.suites import run_suite
 
     fixtures_dir = tmp_path / "fixtures"
     fixtures_dir.mkdir(exist_ok=True)
@@ -254,7 +254,7 @@ def test_suite_replay_mock_serves_from_policy(tmp_path) -> None:
 
 
 def test_suite_non_mapping_yaml_exits_3(tmp_path) -> None:
-    from tracefork_cli.suites import load_suite
+    from tracefork.cli.suites import load_suite
 
     suite = tmp_path / "list.yaml"
     suite.write_text("- just\n- a\n- list\n", encoding="utf-8")
@@ -263,7 +263,7 @@ def test_suite_non_mapping_yaml_exits_3(tmp_path) -> None:
 
 
 def test_suite_entrypoint_not_callable(tmp_path) -> None:
-    from tracefork_cli.suites import run_suite
+    from tracefork.cli.suites import run_suite
 
     (tmp_path / "f.json").write_bytes(
         build_envelope(
@@ -282,7 +282,7 @@ def test_suite_entrypoint_not_callable(tmp_path) -> None:
 def test_junit_error_and_invalid_elements() -> None:
     import xml.etree.ElementTree as ET
 
-    from tracefork_cli.suites import CaseResult, SuiteResult, format_junit
+    from tracefork.cli.suites import CaseResult, SuiteResult, format_junit
 
     result = SuiteResult(
         suite="mixed",

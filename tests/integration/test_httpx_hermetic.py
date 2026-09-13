@@ -12,10 +12,10 @@ from typing import Any
 
 import httpx
 from tracefork import record
+from tracefork.adapters.httpx import TraceForkAsyncTransport
 from tracefork.boundaries import BoundaryRegistry, BoundaryRuntime
 from tracefork.replay import ReplaySession
 from tracefork.serialization import build_envelope
-from tracefork_httpx import TraceForkAsyncTransport
 
 
 class _FakeAPIHandler(BaseHTTPRequestHandler):

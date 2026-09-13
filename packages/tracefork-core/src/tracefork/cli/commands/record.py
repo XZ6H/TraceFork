@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 import typer
-from tracefork_cli.output.console import error_console
+from tracefork.cli.output.console import error_console
 
 
 def record(
@@ -28,7 +28,7 @@ def record(
     record_name = name if name else script.stem
     env = {**os.environ, "TRACEFORK_RECORD_NAME": record_name}
     completed = subprocess.run(
-        [sys.executable, "-m", "tracefork_cli.bootstrap", str(script), *args[1:]],
+        [sys.executable, "-m", "tracefork.cli.bootstrap", str(script), *args[1:]],
         env=env,
         check=False,
     )

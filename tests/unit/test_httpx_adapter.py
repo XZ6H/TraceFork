@@ -6,9 +6,9 @@ from typing import Any
 import httpx
 import pytest
 from tracefork import record
+from tracefork.adapters.httpx import TraceForkAsyncTransport
 from tracefork.boundaries import BoundaryRegistry, BoundaryRuntime
 from tracefork.serialization import build_envelope
-from tracefork_httpx import TraceForkAsyncTransport
 
 JSON_PAYLOAD: dict[str, Any] = {"orders": [{"id": 1, "total": 149.0}]}
 

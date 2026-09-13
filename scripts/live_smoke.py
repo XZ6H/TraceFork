@@ -47,6 +47,7 @@ from typing import Any
 import httpx
 from openai import AsyncOpenAI
 from tracefork import ToolBox, record
+from tracefork.adapters.openai import instrument_openai
 from tracefork.assertions import ResourceMaximums, TraceExpectations, evaluate_expectations
 from tracefork.boundaries import (
     BoundaryRegistry,
@@ -62,7 +63,6 @@ from tracefork.replay import ReplaySession
 from tracefork.serialization import build_envelope, parse_envelope
 from tracefork.storage import FilesystemFixtureStore
 from tracefork.trajectory import build_graph
-from tracefork_openai import instrument_openai
 
 BASE_URL = os.environ.get("LIVE_SMOKE_BASE_URL", "https://openrouter.ai/api/v1")
 MODEL = os.environ.get("LIVE_SMOKE_MODEL", "openai/gpt-4o-mini")
@@ -445,7 +445,7 @@ async def sec_httpx(key: str) -> None:
     if not wanted("httpx"):
         return
     print("\n== [8] httpx adapter: raw chat.completions record/replay ==")
-    from tracefork_httpx import TraceForkAsyncTransport
+    from tracefork.adapters.httpx import TraceForkAsyncTransport
 
     registry = BoundaryRegistry()
     runtime, _ = make_runtime(registry)
@@ -499,7 +499,7 @@ async def sec_httpx(key: str) -> None:
     # Sync httpx client: record from a worker thread (no running loop there).
     import threading
 
-    from tracefork_httpx import TraceForkTransport
+    from tracefork.adapters.httpx import TraceForkTransport
 
     sync_registry = BoundaryRegistry()
     sync_runtime, _ = make_runtime(sync_registry)

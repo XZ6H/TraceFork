@@ -13,11 +13,11 @@ import pytest
 from openai import AsyncOpenAI, OpenAI
 from openai.types.responses import Response
 from tracefork import record
+from tracefork.adapters.openai import instrument_openai
 from tracefork.boundaries import BoundaryRegistry, BoundaryRuntime, ReplayMode, ReplayPolicy
 from tracefork.errors import ReplayMismatchError
 from tracefork.replay import ReplaySession
 from tracefork.serialization import FixtureEnvelope, build_envelope
-from tracefork_openai import instrument_openai
 
 RESPONSE_PAYLOAD: dict[str, Any] = {
     "id": "resp_123",

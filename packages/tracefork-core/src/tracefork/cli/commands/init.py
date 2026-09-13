@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from tracefork_cli.output.console import console
+from tracefork.cli.output.console import console
 
 _CONFIG_TEMPLATE = """\
 # TraceFork configuration (reserved for future use).

@@ -5,12 +5,12 @@ from datetime import UTC, datetime
 import httpx
 import pytest
 from tracefork import record
+from tracefork.adapters.openai import instrument_openai
 from tracefork.boundaries import BoundaryRegistry, BoundaryRuntime
 from tracefork.errors import AdapterError
 from tracefork.models import Provenance, Trace
 from tracefork.replay import ReplaySession
 from tracefork.serialization import build_envelope
-from tracefork_openai import instrument_openai
 from typer.testing import CliRunner
 
 T0 = datetime(2026, 9, 2, 15, 0, 0, tzinfo=UTC)
@@ -27,7 +27,7 @@ def _minimal_fixture() -> bytes:
 
 
 def test_cli_replay_corrupt_fixture_exits_3(tmp_path) -> None:
-    from tracefork_cli.main import app
+    from tracefork.cli.main import app
 
     bad = tmp_path / "bad.json"
     bad.write_text("{ not valid json", encoding="utf-8")
@@ -40,7 +40,7 @@ def test_cli_replay_corrupt_fixture_exits_3(tmp_path) -> None:
 
 
 def test_suite_entrypoint_without_colon(tmp_path) -> None:
-    from tracefork_cli.suites import run_suite
+    from tracefork.cli.suites import run_suite
 
     (tmp_path / "f.json").write_bytes(_minimal_fixture())
     suite = tmp_path / "suite.yaml"
@@ -54,7 +54,7 @@ def test_suite_entrypoint_without_colon(tmp_path) -> None:
 
 
 def test_suite_entrypoint_module_missing(tmp_path) -> None:
-    from tracefork_cli.suites import run_suite
+    from tracefork.cli.suites import run_suite
 
     (tmp_path / "f.json").write_bytes(_minimal_fixture())
     suite = tmp_path / "suite.yaml"
@@ -71,7 +71,7 @@ def test_suite_entrypoint_module_missing(tmp_path) -> None:
 
 
 def test_suite_corrupt_fixture_file(tmp_path) -> None:
-    from tracefork_cli.suites import run_suite
+    from tracefork.cli.suites import run_suite
 
     fixtures_dir = tmp_path / "fixtures"
     fixtures_dir.mkdir(exist_ok=True)
@@ -133,7 +133,7 @@ async def test_httpx_invalid_json_content_type_falls_back_to_text() -> None:
             200, content=b"not really json", headers={"content-type": "application/json"}
         )
 
-    from tracefork_httpx import TraceForkAsyncTransport
+    from tracefork.adapters.httpx import TraceForkAsyncTransport
 
     client = httpx.AsyncClient(
         transport=TraceForkAsyncTransport(inner=httpx.MockTransport(handler), runtime=runtime)
@@ -147,7 +147,7 @@ async def test_httpx_invalid_json_content_type_falls_back_to_text() -> None:
 
 
 async def test_httpx_replay_rebuilds_json_and_text_request_bodies() -> None:
-    from tracefork_httpx import TraceForkAsyncTransport
+    from tracefork.adapters.httpx import TraceForkAsyncTransport
 
     registry = BoundaryRegistry()
     record_runtime = BoundaryRuntime(registry=registry)

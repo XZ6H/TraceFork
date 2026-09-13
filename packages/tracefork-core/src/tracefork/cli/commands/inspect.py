@@ -4,9 +4,9 @@ from collections import Counter
 from pathlib import Path
 
 import typer
+from tracefork.cli.output.console import console, error_console
 from tracefork.errors import FixtureError
 from tracefork.serialization import parse_envelope
-from tracefork_cli.output.console import console, error_console
 
 
 def inspect(fixture_path: Path = typer.Argument(..., exists=True, dir_okay=False)) -> None:
