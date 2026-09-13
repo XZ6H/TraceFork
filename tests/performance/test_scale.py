@@ -186,7 +186,9 @@ def test_stream_replay_with_10_000_events() -> None:
     tracemalloc.stop()
 
     assert consumed == STEPS + 1
-    assert elapsed < 10, f"10,000-event stream replay took {elapsed:.1f}s"
+    assert elapsed < 30, f"10,000-event stream replay took {elapsed:.1f}s"
+    # 30s bound: ~12s on the slowest CI runner, ~2s locally — catches
+    # blow-ups while tolerating runner variance.
     assert peak_bytes < 512 * 1024 * 1024, f"peak memory {peak_bytes // 1024 // 1024}MB"
 
 
