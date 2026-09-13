@@ -38,9 +38,11 @@ registry = BoundaryRegistry()
 runtime = BoundaryRuntime(registry=registry)
 tools = ToolBox(runtime)
 
+
 @tools.tool(name="weather")
 async def weather(city: str) -> dict:
     return {"temperature": 21}  # real call: HTTP, DB, anything
+
 
 with record("weather-case") as rec:
     await weather("Berlin")

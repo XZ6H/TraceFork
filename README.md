@@ -4,12 +4,9 @@
 [![Docs](https://github.com/XZ6H/TraceFork/actions/workflows/docs.yml/badge.svg)](https://xz6h.github.io/TraceFork/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-**Replay AI agent failures locally and turn them into regression tests.**
+Replay AI agent failures locally and turn them into regression tests.
 
-Record a production agent execution once. Then freeze its external
-dependencies — the model, the tools, the APIs — change your agent, and replay
-the same world. Compare exactly where the new run diverged. No production side
-effects. No repeated tool calls. No flaky CI.
+Record a production agent execution once. Then freeze the model, the tools, and the APIs, change your agent, and replay the same world. Compare where the new run diverged. The replay makes no production side effects and no repeated tool calls, and it doesn't flake in CI.
 
 ```console
 $ tracefork replay refund-failure --live llm
@@ -27,37 +24,19 @@ First divergence: removed at alignment step 3
 
 ## Why testing agents is hard
 
-If you build applications on LLM agents, you live with these problems:
+**1. "It worked yesterday."** An agent's behavior depends on the model, the prompt, the tools, the tools' responses, the time of day, and the network. Change any one and behavior shifts. When it breaks, you can't answer what changed or where.
 
-**1. "It worked yesterday."** An agent's behavior depends on the model, the
-prompt, the tools, the tools' responses, the time of day, and the network.
-Change any one of them and behavior shifts in ways a snapshot test can't
-capture — and when it breaks, you can't answer *what changed, and where?*
+**2. Production failures are unreproducible.** The customer saw the agent refund an expired order. The exact model response that caused it is gone. You can't re-run the incident against production, and re-running locally hits a different model mood.
 
-**2. Production failures are unreproducible.** The customer saw the agent
-refund an expired order. The exact model response that caused it is gone.
-You cannot re-run the incident against production, and re-running locally
-hits a different model mood.
+**3. Agent tests in CI are slow, costly, and flaky.** Every test call hits a priced API, takes seconds, and fails randomly. Teams either skip agent tests or ignore the red builds.
 
-**3. Agent tests in CI are slow, costly, and flaky.** Every test call hits a
-priced API, takes seconds, and fails randomly — so teams either skip agent
-tests or ignore the red builds.
+**4. Final-answer checks miss process bugs.** The answer is right, but the agent queried the production database 11 times, called a privileged tool it shouldn't have, or spent 6× the tokens. End-to-end tests only check the answer.
 
-**4. Final-answer checks hide the real bugs.** The answer is right, but the
-agent queried the production database 11 times, called a privileged tool it
-shouldn't have, or spent 6× the tokens. End-to-end tests don't see the
-*process*.
-
-**5. Prompt and model upgrades are rollbacks in the dark.** You swap the
-prompt, run three examples by hand, shrug, and ship. When regression hits two
-weeks later, there is no baseline to compare against.
+**5. Prompt and model upgrades are rollbacks in the dark.** You swap the prompt, run three examples by hand, shrug, and ship. When regression hits two weeks later, there is no baseline to compare against.
 
 ## How TraceFork fixes it
 
-TraceFork records the complete execution — LLM requests and responses, tool
-calls and results, HTTP traffic, timing, errors — as an immutable,
-Git-friendly **fixture**. Everything an agent touches becomes a *boundary*
-that can be frozen or re-run:
+TraceFork records the complete execution as an immutable, Git-friendly fixture: LLM requests and responses, tool calls and results, HTTP traffic, timing, errors. Everything an agent touches becomes a *boundary* that can be frozen or re-run.
 
 | Boundary | Recording | Hermetic replay | Selective replay |
 |---|---|---|---|
@@ -65,22 +44,17 @@ that can be frozen or re-run:
 | Tool call | arguments + result | served from fixture | runs for real |
 | HTTP call | method/URL/body/response | served from fixture | hits the real server |
 
-- **Hermetic replay** runs your *current* agent code with every boundary
-  served from the recording: deterministic, offline, zero API cost, and it
-  **fails closed** — an unmatched call is an error, never a silent request.
-- **Selective replay** freezes part of the world and re-runs the rest: test a
-  new prompt against yesterday's tool responses, or new tools against the
-  recorded model decisions.
-- **Diff** aligns baseline and candidate trajectories and reports the first
-  behavioral divergence plus resource deltas (tokens, cost, calls, latency).
-- **Assertions and suites** turn any incident into a CI gate: required tools,
-  forbidden tools, ordering rules, call-count and token/cost maximums — with
-  deterministic exit codes.
+**Hermetic replay** runs your current agent code with every boundary served from the recording. It is deterministic, offline, and costs zero API tokens. An unmatched call raises an error rather than making a silent request.
+
+**Selective replay** freezes part of the world and re-runs the rest. Test a new prompt against yesterday's tool responses, or new tools against the recorded model decisions.
+
+**Diff** aligns baseline and candidate trajectories and reports the first behavioral divergence plus resource deltas (tokens, cost, calls, latency).
+
+**Assertions and suites** turn any incident into a CI gate: required tools, forbidden tools, ordering rules, call-count and token/cost maximums, with deterministic exit codes.
 
 ## Installation
 
-The packages are not on PyPI yet (planned for the next release). Install from
-source:
+The packages are not on PyPI yet (planned for the next release). Install from source:
 
 ```console
 git clone https://github.com/XZ6H/TraceFork
@@ -88,8 +62,7 @@ cd TraceFork
 uv sync
 ```
 
-Requires Python 3.12+. Works with any OpenAI-compatible API (OpenAI,
-OpenRouter, vLLM, llama.cpp server, ...).
+Requires Python 3.12+. Works with any OpenAI-compatible API (OpenAI, OpenRouter, vLLM, llama.cpp server, and others).
 
 ## Quickstart
 
@@ -117,8 +90,8 @@ async def main() -> None:
         await weather("Berlin")
     fixture = build_envelope(rec.trace)  # immutable, digest-sealed
 
-    # 2. Replay later — the real function deleted, the server down, the
-    #    API key revoked — and the recording answers instead.
+    # 2. Replay later. The real function can be deleted, the server can be
+    #    down, the API key can be revoked. The recording answers instead.
     session = ReplaySession(fixture=fixture, registry=registry)
     with session:
         assert await weather("Berlin") == {"temperature": 21}
@@ -128,23 +101,15 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-The same works for OpenAI calls (sync, async, and streaming) via
-[tracefork-openai](docs/adapters.md), and for raw HTTP via
-[tracefork-httpx](docs/adapters.md).
+The same approach works for OpenAI calls (sync, async, and streaming) via [tracefork-openai](docs/adapters.md), and for raw HTTP via [tracefork-httpx](docs/adapters.md).
 
 ## Recipes
 
-Each recipe solves a problem you have hit while developing agents. The
-running example: a customer-support agent that refunds orders, and the
-production incident where it refunded an *expired* order because its prompt
-skipped the policy check. The full walkthrough lives in
-[examples/support-agent](examples/support-agent).
+Each recipe solves a problem you have hit while developing agents. The running example is a customer-support agent that refunds orders, and the production incident where it refunded an expired order because its prompt skipped the policy check. The full walkthrough lives in [examples/support-agent](examples/support-agent).
 
-### Recipe 1 — A production failure becomes a regression test
+### Recipe 1: A production failure becomes a regression test
 
-Record the buggy behavior once and freeze it as a fixture. A suite then
-asserts the *fix* stays fixed: the policy check must happen, the refund must
-never run.
+Record the buggy behavior once and freeze it as a fixture. A suite then asserts the fix stays fixed: the policy check must happen, the refund must never run.
 
 ```yaml
 # tests/support-agent.yaml
@@ -171,12 +136,11 @@ support-agent-regressions
 0 failed
 ```
 
-If anyone reintroduces the direct refund, the suite fails with the evidence:
-`forbidden tool refund_order: called 1 time(s)`. Exit code 1 — CI red.
+If anyone reintroduces the direct refund, the suite fails with the evidence: `forbidden tool refund_order: called 1 time(s)`. Exit code 1, CI red.
 
-### Recipe 2 — "It worked yesterday": find what changed
+### Recipe 2: "It worked yesterday." Find what changed.
 
-Two runs, one question: *where did behavior diverge first?*
+Two runs, one `tracefork diff` command. The output shows which tool calls were removed, which were added, and at which step the paths split.
 
 ```console
 $ tracefork diff incident-1821.json fixed-run.json
@@ -194,14 +158,9 @@ Resources
   tool_calls: 3 -> 3 (+0.0%)
 ```
 
-No guessing from logs: the removed and inserted steps *are* the behavioral
-change, at the exact step it happened.
+### Recipe 3: Test a new prompt against yesterday's tool responses
 
-### Recipe 3 — Test a new prompt against yesterday's tool responses
-
-You rewrote the prompt. Did it get better? Run the model **live** while the
-tools stay **frozen** at their recorded responses — a controlled experiment
-where the only variable is the prompt:
+You rewrote the prompt. Run the model live while the tools stay frozen at their recorded responses. The only variable is the prompt.
 
 ```python
 from tracefork.boundaries import ReplayMode, ReplayPolicy
@@ -212,19 +171,15 @@ with session:
     await agent.run(input_data)
 ```
 
-Live calls are counted and reported; everything else is served from the
-recording. Flip it around to test a *migrated tool* against the recorded
-model decisions:
+Live calls are counted and reported. Everything else is served from the recording. Flip it around to test a migrated tool against the recorded model decisions:
 
 ```python
 policy = ReplayPolicy(families={"tool": ReplayMode.LIVE})  # tools live, LLM frozen
 ```
 
-### Recipe 4 — Deterministic error handling, without the errors
+### Recipe 4: Deterministic error handling
 
-The recording captured a boundary failing (a 400 from the provider, a tool
-crash). Replay reproduces that failure exactly — so you can test your error
-handling without anyone causing real errors:
+The recording captured a boundary failing (a 400 from the provider, a tool crash). Replay reproduces that failure exactly, so you can test your error handling without anyone causing real errors:
 
 ```python
 from tracefork.errors import ReplayRecordedError
@@ -236,13 +191,11 @@ with session, pytest.raises(ReplayRecordedError) as excinfo:
 assert excinfo.value.recorded_type == "BadRequestError"
 ```
 
-The live dependency never runs; your `except` branch does.
+Your `except` branch runs instead of the live dependency.
 
-### Recipe 5 — Mock a boundary entirely
+### Recipe 5: Mock a boundary entirely
 
-A dependency is too flaky or expensive even to record? Serve a fixed payload
-from the policy instead — keyed by boundary name, with no live call and no
-recording needed:
+A dependency is too flaky or expensive to record. Serve a fixed payload from the policy instead. Keyed by boundary name, with no live call and no recording needed:
 
 ```python
 policy = ReplayPolicy(
@@ -252,13 +205,11 @@ policy = ReplayPolicy(
 session = ReplaySession(fixture=fixture, registry=registry, policy=policy)
 ```
 
-Mock calls are recorded in the candidate trace like any other boundary — and
-a name with no configured mock fails closed rather than hitting the network.
+Mock calls are recorded in the candidate trace like any other boundary. A name with no configured mock fails closed rather than hitting the network.
 
-### Recipe 6 — Gate resources, not just correctness
+### Recipe 6: Gate resources, not only correctness
 
-Correct answer, but did the agent spend a fortune to get it? Resource
-maximums run alongside the structural assertions:
+The answer is correct. The token count might not be. Resource maximums run alongside the structural assertions:
 
 ```yaml
 expect:
@@ -269,14 +220,11 @@ expect:
     cost_usd: 0.05
 ```
 
-Machine-readable runs for CI dashboards: `tracefork eval suite.yaml --format
-json` or `--format junit`.
+Machine-readable runs for CI dashboards: `tracefork eval suite.yaml --format json` or `--format junit`.
 
-### Recipe 7 — Record and replay raw HTTP
+### Recipe 7: Record and replay raw HTTP
 
-Non-SDK dependencies — REST APIs, webhooks — go through the httpx adapter.
-Secret headers are redacted before anything is written, and binary bodies
-replay byte-identically:
+Non-SDK dependencies like REST APIs and webhooks go through the httpx adapter. Secret headers are redacted before anything is written, and binary bodies replay byte-identically:
 
 ```python
 import httpx
@@ -291,8 +239,7 @@ async with client:
         await client.post("https://payments.example.test/capture", json={"id": 1})
 ```
 
-Replays of the same request are served from the recording without opening a
-socket.
+Replays of the same request are served from the recording without opening a socket.
 
 ## The CLI
 
@@ -305,34 +252,27 @@ tracefork diff baseline.json candidate.json           # regression report
 tracefork eval suite.yaml                             # CI regression gate
 ```
 
-Every command documents its options in `--help`; the full contract — including
-the CI exit codes (0 pass, 1 regression, 2 execution error, 3 invalid input) —
-is in [docs/cli.md](docs/cli.md).
+Every command documents its options in `--help`. The full contract, including the CI exit codes (0 pass, 1 regression, 2 execution error, 3 invalid input), is in [docs/cli.md](docs/cli.md).
 
 ## What gets recorded
 
-- LLM requests and responses (OpenAI Responses API: sync, async, streaming —
-  with usage, latency, and finish reason)
+- LLM requests and responses (OpenAI Responses API: sync, async, streaming, with usage, latency, and finish reason)
 - Tool calls: fully-qualified name, canonicalized arguments, result, errors
 - HTTP traffic: method, URL, headers (secrets redacted), status, bodies
 - Span tree: nested and parallel work, timing, exceptions
 - Provenance: git commit, dirty status, branch
 
-Everything is redacted **before** persistence, sealed with a SHA-256 digest,
-and stored as a single versioned JSON file you can commit.
+Everything is redacted before persistence, sealed with a SHA-256 digest, and stored as a single versioned JSON file you can commit.
 
 ## Guarantees
 
-These are enforced by the test suite
-([docs/testing.md](docs/testing.md)), not promised:
+The test suite ([docs/testing.md](docs/testing.md)) enforces these:
 
-- Hermetic replay makes **zero** external calls — verified with transports
-  that explode on any socket attempt.
+- Hermetic replay makes zero external calls. The tests use transports that explode on any socket attempt.
 - Every replayed boundary corresponds to exactly one recorded interaction.
 - The same fixture and code produce the same replay, every time.
 - A replay never mutates the fixture.
-- Unmatched calls fail closed with diagnostics — they never silently fall
-  back to the real dependency.
+- Unmatched calls fail closed with diagnostics. They never fall back to the real dependency.
 
 ## Docs
 
@@ -350,17 +290,11 @@ These are enforced by the test suite
 
 ## Demo
 
-[examples/support-agent](examples/support-agent) is a complete, offline
-walkthrough of the core story: a support agent refunds an expired order
-(incident-1821), the incident is recorded, the fixed agent is replayed against
-it and fails closed, the diff shows the exact behavioral change, and the
-regression suite locks the fix in.
+[examples/support-agent](examples/support-agent) is a complete, offline walkthrough of the core story: a support agent refunds an expired order (incident-1821), the incident is recorded, the fixed agent is replayed against it and fails closed, the diff shows the exact behavioral change, and the regression suite locks the fix in.
 
 ## Status
 
-v0.1.0 is released and CI-gated. Next, per the
-[roadmap](docs/roadmap.md): fork replay, fault injection, OpenTelemetry
-import, and framework adapters.
+v0.1.0 is released and CI-gated. Next, per the [roadmap](docs/roadmap.md): fork replay, fault injection, OpenTelemetry import, and framework adapters.
 
 ## Development
 
@@ -371,9 +305,8 @@ uv sync
 uv run pytest
 ```
 
-Contributors and AI agents: read [AGENTS.md](AGENTS.md) and
-[CONTRIBUTING.md](CONTRIBUTING.md).
+Contributors and AI agents: read [AGENTS.md](AGENTS.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-[Apache-2.0](LICENSE) — Copyright 2026 The TraceFork Authors
+[Apache-2.0](LICENSE) - Copyright 2026 The TraceFork Authors
