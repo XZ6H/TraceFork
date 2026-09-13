@@ -15,7 +15,7 @@ Read in this order: [README.md](README.md) → [docs/concepts.md](docs/concepts.
 
 ## Non-negotiable invariants
 
-These are architectural constraints (plan §2, ADRs 0001–0005). A change that
+These are architectural constraints (ADR 0001–0005). A change that
 would violate one requires an explicit human decision and a new ADR — do not
 "just implement it".
 

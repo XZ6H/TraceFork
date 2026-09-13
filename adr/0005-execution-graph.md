@@ -6,7 +6,7 @@
 ## Context
 
 Agents do not execute linearly: parallel tool calls, nested agents, handoffs,
-retries and loops all occur (PRD §14). Diffing and divergence detection need
+retries and loops all occur. Diffing and divergence detection need
 structure, but choosing a full graph database or an exotic serialization makes
 fixtures brittle and unreadable.
 

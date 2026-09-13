@@ -8,7 +8,7 @@
 A replay library that quietly falls back to the real dependency when a
 recorded interaction cannot be matched is worse than no library at all. It
 would silently call production APIs from tests, leak side effects, and make
-passing tests meaningless (PRD §13, §38). Trust in TraceFork depends entirely
+passing tests meaningless. Trust in TraceFork depends entirely
 on this never happening.
 
 ## Decision

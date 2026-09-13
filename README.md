@@ -129,4 +129,4 @@ uv run mypy packages/
 
 ## License
 
-[Apache-2.0](LICENSE)
+[Apache-2.0](LICENSE) — Copyright 2026 The TraceFork Authors

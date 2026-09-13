@@ -37,8 +37,7 @@ Notes:
 
    ```python
    def test_metrics_counts_error_spans() -> None:
-       spans = [make_span(SpanKind.TOOL, "ok", 0.0, 0.5),
-                make_span(SpanKind.TOOL, "bad", 0.5, 1.0)]
+       spans = [make_span(SpanKind.TOOL, "ok", 0.0, 0.5), make_span(SpanKind.TOOL, "bad", 0.5, 1.0)]
        spans[1].status = SpanStatus.ERROR
        spans[1].error = SpanError(exception_type="ValueError", message="x")
        assert extract_metrics(make_trace([], spans=spans)).error_spans == 1

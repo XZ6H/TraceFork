@@ -53,11 +53,11 @@ test set (record/replay hermetic, mismatch, secret hygiene) passes.
 
 Beyond require/forbid: partial orderings over multiple steps, forbidden
 subsequences, min/max count windows, and set-based matching modes
-(strict/ordered/unordered from PRD §16). Extends `TraceExpectations` and
-the suite YAML. Done when the PRD §16 examples are expressible in suite
+(strict/ordered/unordered matching modes). Extends `TraceExpectations` and
+the suite YAML. Done when the strict/ordered/unordered examples are expressible in suite
 YAML and enforced with evidence.
 
-## v0.5 — attribution + matrix (plan TF-250..263, PRD §20/§22)
+## v0.5 — attribution + matrix
 
 - Change provenance comparison: given baseline and candidate, report which
   surfaces changed (code/prompt/model/tools) using recorded provenance.
@@ -71,11 +71,11 @@ YAML and enforced with evidence.
 - **config.yaml wiring**: `tracefork init` writes a reserved template; wire
   global canonicalization ignore rules and regression thresholds to it
   (currently suite-level only). Tracked in the template comments.
-- Fixture signing (PRD §30): cryptographic authentication of fixtures.
+- Fixture signing: cryptographic authentication of fixtures.
 - GitHub PR comment with trajectory diff (TF-181 PR-comment half; the JUnit
   and JSON formats are done).
-- Stateful simulated tools / counterfactual responses (PRD §32, research).
-- Web trajectory viewer (PRD §33; local-only, no SaaS).
+- Stateful simulated tools / counterfactual responses (research).
+- Web trajectory viewer (local-only, no SaaS).
 - Performance beyond the current 10× envelope: streaming that exceeds the
   in-memory buffer, 100k+ span traces.
 

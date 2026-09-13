@@ -1,6 +1,6 @@
 # Trajectory Diff
 
-How baseline and candidate executions are compared (plan §15, TF-130..134).
+How baseline and candidate executions are compared (TF-130..134).
 
 ## Alignment
 
@@ -64,6 +64,6 @@ declarative expectations and regression thresholds.
 ## Semantic comparison modes
 
 The PRD's strict/ordered/unordered modes map onto the assertion layer:
-`require`/`forbid`/`before`/`max_calls` (plan §16, TF-140..145) express
+`require`/`forbid`/`before`/`max_calls` (TF-140..145) express
 ordering and count constraints without demanding trajectory equality. The
 diff engine itself always reports the structural difference.

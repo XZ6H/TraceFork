@@ -5,7 +5,7 @@ All notable changes to TraceFork are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.0] - 2026-09-13
 
 ### Changed
 
@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Test plan and coverage matrix (`docs/testing.md`); property-based tests
   (round trips, order independence, redaction, graphs); performance smoke
-  tests for the PRD §37 targets; concurrency tests for parallel replays;
+  tests for the performance targets; concurrency tests for parallel replays;
   gated live smoke (`scripts/live_smoke.py`) validating adapters against a
   real OpenAI-compatible API; per-case suite timeouts; coverage tooling in
   CI; `py.typed` markers shipped in all wheels.

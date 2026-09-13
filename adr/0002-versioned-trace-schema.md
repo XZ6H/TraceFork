@@ -6,8 +6,7 @@
 ## Context
 
 Fixtures are recorded real executions committed to the user's repository and
-expected to stay usable for months — that is their entire value (PRD §28:
-"Do not assume you can safely change fixture format later"). Any schema change
+expected to stay usable for months — that is their entire value. Any schema change
 that silently invalidates committed fixtures breaks users' regression suites
 in ways they cannot diagnose.
 

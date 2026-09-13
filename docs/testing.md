@@ -10,10 +10,10 @@ failure path has dedicated cases. Run everything with `uv run pytest`.
 |---|---|---|
 | Unit | `tests/unit/` | Deterministic logic: models, matching, diff, assertions, CLI |
 | Concurrency | `tests/concurrency/` | Async task trees, parallel boundaries, cancellation |
-| Replay invariants | `tests/replay/` | The five product guarantees (plan §34) |
+| Replay invariants | `tests/replay/` | The five product guarantees |
 | Integration | `tests/integration/` | Real servers, real processes, end-to-end slices |
 | Property | `tests/property/` | Hypothesis: round-trips, order independence, redaction |
-| Performance | `tests/performance/` | PRD §37 targets with CI-safe margins |
+| Performance | `tests/performance/` | performance targets with CI-safe margins |
 | Live smoke | `scripts/live_smoke.py` | 114 gated checks against a real OpenAI-compatible API across 18 sections (maintainer task) |
 
 ## Coverage matrix (surface → cases → where)

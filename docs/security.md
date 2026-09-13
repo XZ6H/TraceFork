@@ -48,7 +48,7 @@ key-based redaction entirely (not recommended).
 - stack traces (only exception type and message — traces leak local paths),
 - anything matched by the redaction engine above.
 
-## Fixture integrity (PRD §30)
+## Fixture integrity
 
 Fixtures are sealed with a SHA-256 digest over their canonical serialization
 (see [trace-schema.md](trace-schema.md)). Loading a fixture whose digest does
@@ -68,4 +68,4 @@ a live call. See [ADR 0003](../adr/0003-fail-closed-replay.md) and
 - Streaming LLM responses are buffered fully in memory at record and replay
   time.
 - Fixture signing (cryptographic authentication of fixtures) is a planned
-  later feature (PRD §30).
+  later feature.

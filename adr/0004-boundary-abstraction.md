@@ -10,7 +10,7 @@ randomness) must be interceptable for recording *and* replayable under
 policy. Implementing interception twice — once to record, once to replay —
 guarantees drift between the two modes and doubles the places where secrets,
 async semantics and error behavior can go wrong. Framework-specific code must
-also stay out of the core (PRD §24, plan Rule 1 and Rule 5).
+also stay out of the core (see ADR 0001).
 
 ## Decision
 
