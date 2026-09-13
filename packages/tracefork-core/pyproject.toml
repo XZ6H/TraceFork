@@ -1,5 +1,5 @@
 [project]
-name = "tracefork"
+name = "tracefork-agent"
 version = "0.1.0"
 description = "Replay AI agent failures locally and turn them into regression tests."
 readme = "README.md"
